@@ -153,15 +153,25 @@ tr:hover td{background:#FDFCF8}
         <div class="login-brand-sub">Stack Tecnológico</div>
       </div>
     </div>
-    <div class="login-title">Acesso restrito</div>
-    <div class="login-sub">Introduz o teu email corporativo para receber um link de acesso seguro.</div>
-    <label class="login-label" for="login-email">Email corporativo</label>
-    <input class="login-input" type="email" id="login-email" placeholder="nome@grownt.tech" autocomplete="email">
-    <button class="login-btn" id="login-btn">Enviar link de acesso</button>
+    <div class="login-title" id="login-title">Acesso restrito</div>
+    <div class="login-sub" id="login-sub">Introduz o teu email corporativo para receber um código de acesso.</div>
+    <!-- Step 1: email -->
+    <div id="step-email">
+      <label class="login-label" for="login-email">Email corporativo</label>
+      <input class="login-input" type="email" id="login-email" placeholder="nome@grownt.tech" autocomplete="email">
+      <button class="login-btn" id="login-btn">Enviar código de acesso</button>
+    </div>
+    <!-- Step 2: OTP code -->
+    <div id="step-otp" style="display:none">
+      <label class="login-label" for="login-otp">Código de 6 dígitos</label>
+      <input class="login-input" type="text" id="login-otp" placeholder="123456" maxlength="6" autocomplete="one-time-code" inputmode="numeric" style="font-size:22px;font-weight:800;letter-spacing:8px;text-align:center">
+      <button class="login-btn" id="otp-btn">Verificar código</button>
+      <button id="back-btn" style="width:100%;margin-top:8px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;padding:6px">← Usar outro email</button>
+    </div>
     <div class="login-msg" id="login-msg"></div>
     <div class="login-footer">
       Acesso exclusivo para <strong>@grownt.tech</strong> e <strong>@gtgroup.tech</strong><br>
-      O link expira em 60 minutos · GTGroup · Gröwnt © 2026
+      O código expira em 60 minutos · GTGroup · Gröwnt © 2026
     </div>
   </div>
 </div>
@@ -233,21 +243,58 @@ document.getElementById("login-btn").addEventListener("click", async () => {
   btn.disabled=true; btn.textContent="A enviar...";
   const {error} = await sb.auth.signInWithOtp({
     email,
-    options:{ emailRedirectTo: "https://techstack-grownt-v3.vercel.app" }
+    options:{ shouldCreateUser: true }
   });
 
   if(error){
     msg.textContent="Erro: "+error.message; msg.className="login-msg error";
-    btn.disabled=false; btn.textContent="Enviar link de acesso";
+    btn.disabled=false; btn.textContent="Enviar código de acesso";
   } else {
-    msg.textContent="✓ Link enviado para "+email+". Verifica o teu email.";
+    // Show OTP step
+    document.getElementById("step-email").style.display="none";
+    document.getElementById("step-otp").style.display="block";
+    document.getElementById("login-title").textContent="Código enviado";
+    document.getElementById("login-sub").textContent="Verifica o teu email "+email+" e introduz o código de 6 dígitos.";
+    msg.textContent="✓ Código enviado para "+email;
     msg.className="login-msg success";
-    btn.textContent="Link enviado";
+    document.getElementById("login-otp").focus();
   }
 });
 
-document.getElementById("login-email").addEventListener("keydown", e => {
-  if(e.key==="Enter") document.getElementById("login-btn").click();
+// OTP verify
+document.getElementById("otp-btn").addEventListener("click", async () => {
+  const email = document.getElementById("login-email").value.trim().toLowerCase();
+  const token = document.getElementById("login-otp").value.trim();
+  const msg = document.getElementById("login-msg");
+  const btn = document.getElementById("otp-btn");
+  if(token.length !== 6){ msg.textContent="Introduz os 6 dígitos do código."; msg.className="login-msg error"; return; }
+  btn.disabled=true; btn.textContent="A verificar...";
+  const {data, error} = await sb.auth.verifyOtp({ email, token, type:"email" });
+  if(error){
+    msg.textContent="Código inválido ou expirado. Tenta novamente."; msg.className="login-msg error";
+    btn.disabled=false; btn.textContent="Verificar código";
+  } else {
+    msg.textContent="✓ Acesso verificado! A carregar..."; msg.className="login-msg success";
+    setTimeout(()=>{ location.reload(); }, 800);
+  }
+});
+
+// Back button
+document.getElementById("back-btn").addEventListener("click", () => {
+  document.getElementById("step-email").style.display="block";
+  document.getElementById("step-otp").style.display="none";
+  document.getElementById("login-title").textContent="Acesso restrito";
+  document.getElementById("login-sub").textContent="Introduz o teu email corporativo para receber um código de acesso.";
+  document.getElementById("login-msg").className="login-msg";
+  document.getElementById("login-msg").textContent="";
+  document.getElementById("login-btn").disabled=false;
+  document.getElementById("login-btn").textContent="Enviar código de acesso";
+  document.getElementById("login-otp").value="";
+});
+
+document.getElementById("login-otp").addEventListener("keydown", e => {
+  if(e.key==="Enter") document.getElementById("otp-btn").click();
+});==="Enter") document.getElementById("login-btn").click();
 });
 
 // ── App data & render ─────────────────────────────────
