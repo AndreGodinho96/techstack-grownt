@@ -226,7 +226,7 @@ document.getElementById("login-btn").addEventListener("click", async () => {
   const email = document.getElementById("login-email").value.trim().toLowerCase();
   const msg = document.getElementById("login-msg");
   const btn = document.getElementById("login-btn");
-  msg.className="login-msg"; msg.style.display="none";
+  msg.className="login-msg"; msg.textContent=""; msg.style.display="block";
 
   const password = document.getElementById("login-password").value;
   if(!email){ msg.textContent="Introduz o teu email."; msg.className="login-msg error"; return; }
