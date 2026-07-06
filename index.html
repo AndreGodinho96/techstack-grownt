@@ -138,6 +138,7 @@ tr:hover td{background:#FDFCF8}
 .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 
 @media(max-width:768px){.metrics{grid-template-columns:repeat(2,1fr)}.g2{grid-template-columns:1fr}.content{padding:14px}.tabs{margin-left:6px}.tab{padding:0 9px;font-size:11px}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
@@ -223,6 +224,10 @@ function showApp(user){
   loadData();
 }
 
+window._toggleExpand = function(id){
+  S.expandedRow = S.expandedRow === id ? null : id;
+  render();
+};
 window._doLogin = async function(){
   const email = document.getElementById("login-email").value.trim().toLowerCase();
   const password = document.getElementById("login-password").value;
@@ -258,7 +263,7 @@ const SBC={1:"#fee2e2",2:"#fef3c7",3:"#fff7ed",4:"#dcfce7",5:"#dbeafe"};
 const SCC={1:"#991b1b",2:"#92400e",3:"#9a3412",4:"#166534",5:"#1e40af"};
 
 const _charts={};
-const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,editForm:{},loading:true,saving:false,lastRefresh:null};
+const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,editForm:{},loading:true,saving:false,lastRefresh:null};
 
 async function sbFetch(path,opts={}){
   const {data:{session}} = await sb.auth.getSession();
@@ -603,9 +608,9 @@ function buildStack(){
       <tbody>${f.map((t,i)=>{
         const sm=SM[t.status]||{l:t.status,c:"#888",b:"#f3f4f6"};
         const alert=t.alertas||t.risco_obs||"";const isRed=alert.includes("🚨");
-        return`<tr style="background:${i%2===0?"white":"#FDFCF8"}">
+        return`<tr style="background:${S.expandedRow===t.id?"#FFF7F5":i%2===0?"white":"#FDFCF8"};cursor:pointer" onclick="window._toggleExpand('${t.id}')">
           <td style="color:#ccc;font-weight:800;font-size:11px">${t.numero}</td>
-          <td style="font-weight:700;white-space:nowrap">${t.ferramenta}</td>
+          <td style="font-weight:700;white-space:nowrap"><span style="font-size:9px;color:${S.expandedRow===t.id?'#E8461E':'#ccc'};margin-right:5px;display:inline-block;transform:rotate(${S.expandedRow===t.id?90:0}deg);transition:transform .15s">▶</span>${t.ferramenta}</td>
           <td><span class="badge" style="color:${sm.c};background:${sm.b}">${sm.l}</span></td>
           <td style="color:var(--muted);white-space:nowrap;font-weight:600">${t.departamento||"—"}</td>
           <td style="color:#999;font-size:11.5px;white-space:nowrap">${t.categoria_funcional||"—"}</td>
@@ -619,8 +624,38 @@ function buildStack(){
           <td style="text-align:center">${t.score_utilizacao?`<span title="${SL[t.score_utilizacao]}" style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${SBC[t.score_utilizacao]};color:${SCC[t.score_utilizacao]};font-size:11px;font-weight:800">${t.score_utilizacao}</span>`:`<span style="color:#ddd">—</span>`}</td>
           <td>${t.nps_interno?`<span class="badge" style="color:${t.nps_interno==="Usa bem"?"#15803d":t.nps_interno==="Usa pouco"?"#b45309":"#dc2626"};background:${t.nps_interno==="Usa bem"?"#dcfce7":t.nps_interno==="Usa pouco"?"#fef3c7":"#fef2f2"}">${t.nps_interno}</span>`:`<span style="color:#ddd">—</span>`}</td>
           <td style="font-size:11px;color:${isRed?"#dc2626":"#d97706"};max-width:160px;font-weight:600">${alert||`<span style="color:#ddd">—</span>`}</td>
-          <td><button class="edit-btn" data-id="${t.id}">✏</button></td>
-        </tr>`;
+          <td style="white-space:nowrap">
+            <button class="edit-btn" data-id="${t.id}" onclick="event.stopPropagation()">✏</button>
+          </td>
+        </tr>
+        ${S.expandedRow===t.id?`<tr style="background:#FFF7F5"><td colspan="13" style="padding:0">
+          <div style="padding:16px 20px 20px;border-top:2px solid #E8461E;border-bottom:1px solid #F0EDE4;animation:fadeIn .15s ease">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px 24px;margin-bottom:12px">
+              ${t.para_que_serve?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Para que serve</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.para_que_serve}</div></div>`:""}
+              ${t.login_acesso?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Acesso / Login</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.login_acesso}</div></div>`:""}
+              ${t.prox_renovacao?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Próx. renovação</div><div style="font-size:12px;font-weight:700;color:${new Date(t.prox_renovacao)<new Date(Date.now()+90*86400000)?"#dc2626":"#1A1F2E"}">${new Date(t.prox_renovacao+"T12:00:00").toLocaleDateString("pt-BR")}</div></div>`:""}
+              ${t.responsavel?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Responsável</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.responsavel}</div></div>`:""}
+              ${t.integra_com?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Integra com</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.integra_com}</div></div>`:""}
+              ${t.substituto?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Substituto</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.substituto}</div></div>`:""}
+              ${t.benchmark_mercado?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Benchmark mercado</div><div style="font-size:12px;font-weight:700;color:${parseFloat(t.custo_brl_mes)>t.benchmark_mercado?"#dc2626":"#16a34a"}">R$ ${Number(t.benchmark_mercado).toLocaleString("pt-BR",{maximumFractionDigits:0})} ${parseFloat(t.custo_brl_mes)>t.benchmark_mercado?"▲ acima":"✓ OK"}</div></div>`:""}
+              ${t.contrato?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Contrato</div><div style="font-size:12px;font-weight:700;color:#16a34a">✓ Possui contrato</div></div>`:""}
+              ${t.data_contratacao?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Contratado em</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${new Date(t.data_contratacao+"T12:00:00").toLocaleDateString("pt-BR")}</div></div>`:""}
+              ${t.aprovado_por?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Aprovado por</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.aprovado_por}</div></div>`:""}
+              ${t.mercado&&t.mercado!=="Global"?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Mercado</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.mercado}</div></div>`:""}
+              ${t.missao_critica?`<div><div style="font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Missão crítica</div><div style="font-size:12px;font-weight:700;color:#dc2626">⚠ Sim</div></div>`:""}
+            </div>
+            ${(t.acao_pendente||t.risco_obs||t.alertas||t.benchmark_notas)?`<div style="display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid #F0EDE4">
+              ${t.acao_pendente?`<div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:11px;font-weight:700;background:#fef3c7;color:#b45309;padding:2px 7px;border-radius:4px;flex-shrink:0">AÇÃO</span><span style="font-size:12px;color:#1A1F2E">${t.acao_pendente}</span></div>`:""}
+              ${t.risco_obs?`<div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:11px;font-weight:700;background:#fef2f2;color:#dc2626;padding:2px 7px;border-radius:4px;flex-shrink:0">RISCO</span><span style="font-size:12px;color:#1A1F2E">${t.risco_obs}</span></div>`:""}
+              ${t.alertas?`<div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:11px;font-weight:700;background:#fef2f2;color:#dc2626;padding:2px 7px;border-radius:4px;flex-shrink:0">ALERTA</span><span style="font-size:12px;color:#1A1F2E">${t.alertas}</span></div>`:""}
+              ${t.benchmark_notas?`<div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:11px;font-weight:700;background:#e0f2fe;color:#0369a1;padding:2px 7px;border-radius:4px;flex-shrink:0">NOTA</span><span style="font-size:12px;color:#1A1F2E">${t.benchmark_notas}</span></div>`:""}
+            </div>`:""}
+            <div style="margin-top:12px;padding-top:10px;border-top:1px solid #F0EDE4;display:flex;justify-content:flex-end">
+              <button class="edit-btn" data-id="${t.id}" onclick="event.stopPropagation()" style="padding:5px 14px;font-size:12px">✏ Editar ferramenta</button>
+            </div>
+          </div>
+        </td></tr>`:""}
+        `;
       }).join("")}</tbody>
     </table></div>
     ${f.length===0?`<div class="empty">Nenhuma ferramenta encontrada</div>`:""}
@@ -828,7 +863,7 @@ function buildHistorico(){
       <thead><tr><th>Data</th><th>Ferramenta</th><th>Tipo</th><th>De → Para</th><th>Impacto BRL</th><th>Observações</th></tr></thead>
       <tbody>${S.changelog.map((c,i)=>{
         const tc=c.tipo_evento==="Cancelamento"?"color:#dc2626;background:#fef2f2":c.tipo_evento==="Contratação"?"color:#15803d;background:#dcfce7":"color:#b45309;background:#fef3c7";
-        return`<tr style="background:${i%2===0?"white":"#FDFCF8"}">
+        return`<tr style="background:${S.expandedRow===t.id?"#FFF7F5":i%2===0?"white":"#FDFCF8"};cursor:pointer" onclick="window._toggleExpand('${t.id}')">
           <td style="color:var(--muted);white-space:nowrap;font-weight:600;font-size:12px">${c.data_evento?new Date(c.data_evento+"T12:00:00").toLocaleDateString("pt-BR"):"—"}</td>
           <td style="font-weight:700">${c.ferramenta}</td>
           <td><span class="badge" style="${tc}">${c.tipo_evento}</span></td>
