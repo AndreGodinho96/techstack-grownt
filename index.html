@@ -302,7 +302,6 @@ function toast(msg,err=false){
 
 
 // ── Chart instances ────────────────────────────────────────────────────────
-const _charts = {};
 
 function destroyCharts() {
   Object.keys(_charts).forEach(k => { try { _charts[k].destroy(); } catch(e) {} delete _charts[k]; });
