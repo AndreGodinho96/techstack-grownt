@@ -246,8 +246,7 @@ window._doLogin = async function(){
     btn.disabled=false; btn.textContent="Entrar";
   }
 };
-document.getElementById("login-password").addEventListener("keydown", e=>{ if(e.key==="Enter") window._doLogin(); });==="Enter") document.getElementById("login-btn").click();
-});
+document.getElementById("login-password").addEventListener("keydown", e=>{ if(e.key==="Enter") window._doLogin(); });
 
 // ── App data & render ─────────────────────────────────
 const SM={"ATIVA":{l:"Ativa",c:"#15803d",b:"#dcfce7"},"GROWNTLAB":{l:"Growntlab",c:"#7c3aed",b:"#ede9fe"},"FORA_DA_GESTÃO":{l:"Fora da gestão",c:"#b45309",b:"#fef3c7"},"CANCELADA":{l:"Cancelada",c:"#6b7280",b:"#f3f4f6"},"EM_AVALIAÇÃO":{l:"Em avaliação",c:"#0369a1",b:"#e0f2fe"}};
