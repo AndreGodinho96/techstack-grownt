@@ -159,7 +159,7 @@ tr:hover td{background:#FDFCF8}
     <input class="login-input" type="email" id="login-email" placeholder="nome@grownt.tech" autocomplete="email">
     <label class="login-label" for="login-password" style="margin-top:12px">Password</label>
     <input class="login-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
-    <button class="login-btn" id="login-btn" style="margin-top:16px">Entrar</button>
+    <button class="login-btn" id="login-btn" style="margin-top:16px" onclick="window._doLogin()">Entrar</button>
     <div class="login-msg" id="login-msg"></div>
     <div class="login-footer">
       Acesso exclusivo para <strong>@grownt.tech</strong> e <strong>@gtgroup.tech</strong><br>
@@ -222,17 +222,15 @@ function showApp(user){
   loadData();
 }
 
-async function doLogin(){
+window._doLogin = async function(){
   const email = document.getElementById("login-email").value.trim().toLowerCase();
   const password = document.getElementById("login-password").value;
   const msg = document.getElementById("login-msg");
   const btn = document.getElementById("login-btn");
   msg.textContent=""; msg.className="login-msg"; msg.style.display="block";
-
   if(!email){ msg.textContent="Introduz o teu email."; msg.className="login-msg error"; return; }
   if(!password){ msg.textContent="Introduz a tua password."; msg.className="login-msg error"; return; }
   if(!ALLOWED_DOMAINS.some(d=>email.endsWith(d))){ msg.textContent="Acesso restrito a @grownt.tech e @gtgroup.tech."; msg.className="login-msg error"; return; }
-
   btn.disabled=true; btn.textContent="A entrar...";
   try {
     const {data, error} = await sb.auth.signInWithPassword({ email, password });
@@ -244,12 +242,11 @@ async function doLogin(){
       setTimeout(()=>{ window.location.reload(); }, 500);
     }
   } catch(e) {
-    msg.textContent="Erro inesperado: "+e.message; msg.className="login-msg error";
+    msg.textContent="Erro: "+e.message; msg.className="login-msg error";
     btn.disabled=false; btn.textContent="Entrar";
   }
-}
-document.getElementById("login-btn").addEventListener("click", doLogin);
-document.getElementById("login-password").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });==="Enter") document.getElementById("login-btn").click();
+};
+document.getElementById("login-password").addEventListener("keydown", e=>{ if(e.key==="Enter") window._doLogin(); });==="Enter") document.getElementById("login-btn").click();
 });
 
 // ── App data & render ─────────────────────────────────
