@@ -684,20 +684,22 @@ function buildHTML(){
       </div>
       <div class="header-right">
         ${S.cambio&&!S.cambio.error?`
-      <div style="display:flex;align-items:center;gap:10px;margin-right:12px">
-        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border-radius:var(--radius-sm);padding:4px 10px">
-          <span style="font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em">USD</span>
-          <div style="display:flex;gap:4px">
-            ${(S.cambio.usd||[]).map((r,i)=>`<span style="font-size:11px;font-weight:${i===0?800:500};color:${i===0?"white":"rgba(255,255,255,.4)"}" title="${r.label}">R$ ${Number(r.value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}${i<(S.cambio.usd.length-1)?'':''}</span>`).join('<span style="color:rgba(255,255,255,.15);font-size:10px;margin:0 1px">·</span>')}
-          </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-right:12px">
+        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border-radius:var(--radius-sm);padding:5px 10px">
+          <span style="font-size:9px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-right:2px">USD</span>
+          ${(S.cambio.usd||[]).map((r,i)=>`<div style="display:flex;flex-direction:column;align-items:center;gap:1px${i>0?';border-left:1px solid rgba(255,255,255,.1);padding-left:6px':''}">
+            <span style="font-size:8px;font-weight:600;color:rgba(255,255,255,${i===0?'.5':'.25'});letter-spacing:.02em">${r.label}</span>
+            <span style="font-size:11px;font-weight:${i===0?800:500};color:${i===0?'white':'rgba(255,255,255,.35)'}">R$ ${Number(r.value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+          </div>`).join('')}
         </div>
-        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border-radius:var(--radius-sm);padding:4px 10px">
-          <span style="font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em">EUR</span>
-          <div style="display:flex;gap:4px">
-            ${(S.cambio.eur||[]).map((r,i)=>`<span style="font-size:11px;font-weight:${i===0?800:500};color:${i===0?"white":"rgba(255,255,255,.4)"}" title="${r.label}">R$ ${Number(r.value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`).join('<span style="color:rgba(255,255,255,.15);font-size:10px;margin:0 1px">·</span>')}
-          </div>
+        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border-radius:var(--radius-sm);padding:5px 10px">
+          <span style="font-size:9px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-right:2px">EUR</span>
+          ${(S.cambio.eur||[]).map((r,i)=>`<div style="display:flex;flex-direction:column;align-items:center;gap:1px${i>0?';border-left:1px solid rgba(255,255,255,.1);padding-left:6px':''}">
+            <span style="font-size:8px;font-weight:600;color:rgba(255,255,255,${i===0?'.5':'.25'});letter-spacing:.02em">${r.label}</span>
+            <span style="font-size:11px;font-weight:${i===0?800:500};color:${i===0?'white':'rgba(255,255,255,.35)'}">R$ ${Number(r.value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+          </div>`).join('')}
         </div>
-        <span style="font-size:9px;color:rgba(255,255,255,.2)">PTAX ${S.cambio.updated||''}</span>
+        <span style="font-size:9px;color:rgba(255,255,255,.2);white-space:nowrap">PTAX ${S.cambio.updated||''}</span>
       </div>`:''}
       ${S.cambio&&S.cambio.error?`<span style="font-size:10px;color:rgba(255,100,100,.5)">câmbio indisponível</span>`:''}
       ${S.lastRefresh?`<span style="font-size:10px;color:rgba(255,255,255,.3);font-weight:600;letter-spacing:.04em;text-transform:uppercase">${S.lastRefresh.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span>`:""}
