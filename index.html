@@ -290,6 +290,37 @@ async function fetchCambio(){
     render();
   }
 }
+window._calcBRL = function(forceToday){
+  const moeda = document.getElementById("f-moeda")?.value||"BRL";
+  const original = parseFloat(document.getElementById("f-custo_original")?.value)||0;
+  const campoTaxa = document.getElementById("f-cambio");
+  const campoBRL = document.getElementById("f-custo_brl_mes");
+  const preview = document.getElementById("modal-cambio-preview");
+  if(moeda==="BRL"){ if(preview) preview.textContent=""; return; }
+  // Get rate
+  let taxa = parseFloat(campoTaxa?.value)||0;
+  const taxaHoje = moeda==="USD" ? S.cambio?.usd?.[0]?.value : S.cambio?.eur?.[0]?.value;
+  if(forceToday && taxaHoje){ taxa = taxaHoje; if(campoTaxa) campoTaxa.value = taxaHoje.toFixed(4); }
+  if(!taxa || !original){ if(preview) preview.textContent=""; return; }
+  const brl = (original*taxa).toFixed(2);
+  if(campoBRL && (forceToday || !campoBRL.value)) campoBRL.value = brl;
+  if(preview){
+    const varStr = S.cambio?.usd?.[0]?.value && moeda==="USD" ? ` · hoje: R$ ${(original*taxaHoje).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : (S.cambio?.eur?.[0]?.value && moeda==="EUR" ? ` · hoje: R$ ${(original*taxaHoje).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : "");
+    preview.innerHTML = `<span style="color:var(--orange);font-weight:700">${moeda} ${original.toLocaleString('pt-BR',{minimumFractionDigits:2})} × R$ ${taxa.toFixed(4)} = R$ ${parseFloat(brl).toLocaleString('pt-BR',{minimumFractionDigits:2})}/mês</span>${varStr}`;
+  }
+};
+window._usarCambioHoje = function(){
+  const moeda = document.getElementById("f-moeda")?.value||"BRL";
+  if(moeda==="BRL") return;
+  const taxa = moeda==="USD" ? S.cambio?.usd?.[0]?.value : S.cambio?.eur?.[0]?.value;
+  if(!taxa) return;
+  const campo = document.getElementById("f-cambio");
+  const notasCampo = document.getElementById("f-cambio_notas");
+  if(campo) campo.value = taxa.toFixed(4);
+  const hoje = new Date().toLocaleDateString('pt-BR',{month:'short',year:'numeric'});
+  if(notasCampo && !notasCampo.value) notasCampo.value = `${moeda} 1 = R$ ${taxa.toFixed(4)} em ${hoje} (PTAX BCB)`;
+  window._calcBRL(true);
+};
 window._toggleExpand = function(id){
   const sid = String(id);
   S.expandedRow = S.expandedRow === sid ? null : sid;
@@ -701,7 +732,32 @@ function buildStack(){
               ${t.integra_com?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Integra com</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.integra_com}</div></div>`:""}
               ${t.substituto?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Substituto</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.substituto}</div></div>`:""}
               ${t.benchmark_mercado?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Benchmark mercado</div><div style="font-size:12px;font-weight:700;color:${parseFloat(t.custo_brl_mes)>t.benchmark_mercado?"#dc2626":"#16a34a"}">R$ ${Number(t.benchmark_mercado).toLocaleString("pt-BR",{maximumFractionDigits:0})} ${parseFloat(t.custo_brl_mes)>t.benchmark_mercado?"▲ acima":"✓ OK"}</div></div>`:""}
-              ${t.custo_original&&t.moeda&&t.moeda!=="BRL"?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Custo original</div><div style="font-size:12px;font-weight:700;color:#1A1F2E">${t.moeda} ${Number(t.custo_original).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div></div>`:""}${t.cambio_contratacao?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Câmbio na contratação</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.moeda||"USD"} 1 = R$ ${Number(t.cambio_contratacao).toLocaleString("pt-BR",{minimumFractionDigits:4})}${t.cambio_notas?" · "+t.cambio_notas:""}</div></div>`:""}${t.contrato?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Contrato</div><div style="font-size:12px;font-weight:700;color:#16a34a">✓ Possui contrato</div></div>`:""}
+              ${t.custo_original&&t.moeda&&t.moeda!=="BRL"?`
+              <div style="background:#F4F1EA;border-radius:6px;padding:8px 10px;grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+                <div>
+                  <div style="font-size:9px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Custo original</div>
+                  <div style="font-size:13px;font-weight:800;color:#1A1F2E">${t.moeda} ${Number(t.custo_original).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+                </div>
+                ${t.cambio_contratacao?`<div>
+                  <div style="font-size:9px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Câmbio contratação</div>
+                  <div style="font-size:13px;font-weight:700;color:#1A1F2E">R$ ${Number(t.cambio_contratacao).toLocaleString("pt-BR",{minimumFractionDigits:4})}</div>
+                  ${t.cambio_notas?`<div style="font-size:10px;color:var(--muted)">${t.cambio_notas}</div>`:""}
+                </div>`:""}
+                ${S.cambio&&!S.cambio.error?(()=>{
+                  const taxaHoje = t.moeda==="USD"?S.cambio.usd?.[0]?.value:S.cambio.eur?.[0]?.value;
+                  const brlHoje = taxaHoje ? t.custo_original*taxaHoje : null;
+                  const varPct = t.cambio_contratacao&&taxaHoje ? ((taxaHoje-t.cambio_contratacao)/t.cambio_contratacao*100) : null;
+                  return taxaHoje?`<div>
+                  <div style="font-size:9px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Câmbio hoje (PTAX)</div>
+                  <div style="font-size:13px;font-weight:700;color:#1A1F2E">R$ ${Number(taxaHoje).toLocaleString("pt-BR",{minimumFractionDigits:4})}</div>
+                  ${varPct!==null?`<div style="font-size:10px;font-weight:700;color:${varPct>0?"#dc2626":"#16a34a"}">${varPct>0?"+":""}${varPct.toFixed(1)}% desde contratação</div>`:""}
+                </div><div>
+                  <div style="font-size:9px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">BRL/mês estimado hoje</div>
+                  <div style="font-size:13px;font-weight:800;color:${brlHoje>t.custo_brl_mes*1.05?"#dc2626":"#1A1F2E"}">R$ ${Number(brlHoje).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>
+                  ${brlHoje>t.custo_brl_mes*1.05?`<div style="font-size:10px;color:#dc2626">▲ vs registado R$ ${Number(t.custo_brl_mes).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div>`:""}
+                </div>`:"";
+                })():""}
+              </div>`:""}${t.cambio_contratacao?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Câmbio na contratação</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.moeda||"USD"} 1 = R$ ${Number(t.cambio_contratacao).toLocaleString("pt-BR",{minimumFractionDigits:4})}${t.cambio_notas?" · "+t.cambio_notas:""}</div></div>`:""}${t.contrato?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Contrato</div><div style="font-size:12px;font-weight:700;color:#16a34a">✓ Possui contrato</div></div>`:""}
               ${t.data_contratacao?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Contratado em</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${new Date(t.data_contratacao+"T12:00:00").toLocaleDateString("pt-BR")}</div></div>`:""}
               ${t.aprovado_por?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Aprovado por</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.aprovado_por}</div></div>`:""}
               ${t.mercado&&t.mercado!=="Global"?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Mercado</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.mercado}</div></div>`:""}
@@ -947,12 +1003,28 @@ function buildModal(){
       <div class="mbody">
         <div class="fg">
           <div class="fg" style="background:#F4F1EA;padding:12px;border-radius:8px;margin-bottom:8px;grid-column:1/-1">
-            <div style="font-size:10px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;grid-column:1/-1">💰 Custo e Câmbio</div>
-            <div class="ff"><label>Custo original</label><input id="f-custo_original" type="number" step="0.01" placeholder="ex: 299.00" value="${f.custo_original||""}"></div>
-            <div class="ff"><label>Moeda</label><select id="f-moeda"><option value="BRL"${(f.moeda||"BRL")==="BRL"?" selected":""}>BRL — Real</option><option value="USD"${f.moeda==="USD"?" selected":""}>USD — Dólar</option><option value="EUR"${f.moeda==="EUR"?" selected":""}>EUR — Euro</option></select></div>
-            <div class="ff"><label>BRL/Mês (actual)</label><input id="f-custo_brl_mes" type="number" step="0.01" placeholder="ex: 1540.00" value="${f.custo_brl_mes||""}"></div>
-            <div class="ff"><label>Câmbio na contratação</label><input id="f-cambio" type="number" step="0.0001" placeholder="ex: 5.2300" value="${f.cambio_contratacao||""}"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;grid-column:1/-1;margin-bottom:10px">
+              <span style="font-size:10px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.06em">💰 Custo e Câmbio</span>
+              ${S.cambio&&!S.cambio.error?`<span style="font-size:10px;color:var(--muted)">BCB PTAX: <strong style="color:var(--navy)">USD R$ ${S.cambio.usd?.[0]?.value?.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})||'—'}</strong> · <strong style="color:var(--navy)">EUR R$ ${S.cambio.eur?.[0]?.value?.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})||'—'}</strong> <span style="color:#bbb">(hoje)</span></span>`:''}
+            </div>
+            <div class="ff"><label>Custo original</label><input id="f-custo_original" type="number" step="0.01" placeholder="ex: 299.00" value="${f.custo_original||""}" oninput="window._calcBRL()"></div>
+            <div class="ff"><label>Moeda</label><select id="f-moeda" onchange="window._calcBRL()"><option value="BRL"${(f.moeda||"BRL")==="BRL"?" selected":""}>BRL — Real</option><option value="USD"${f.moeda==="USD"?" selected":""}>USD — Dólar</option><option value="EUR"${f.moeda==="EUR"?" selected":""}>EUR — Euro</option></select></div>
+            <div class="ff">
+              <label style="display:flex;align-items:center;justify-content:space-between">
+                <span>BRL/Mês (actual)</span>
+                ${S.cambio&&!S.cambio.error?`<button type="button" onclick="window._calcBRL(true)" style="font-size:10px;background:#E8461E;color:white;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-family:inherit">↻ Calcular</button>`:''}
+              </label>
+              <input id="f-custo_brl_mes" type="number" step="0.01" placeholder="ex: 1540.00" value="${f.custo_brl_mes||""}">
+            </div>
+            <div class="ff">
+              <label style="display:flex;align-items:center;justify-content:space-between">
+                <span>Câmbio na contratação</span>
+                ${S.cambio&&!S.cambio.error?`<button type="button" onclick="window._usarCambioHoje()" style="font-size:10px;background:var(--navy);color:white;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-family:inherit">Usar hoje</button>`:''}
+              </label>
+              <input id="f-cambio" type="number" step="0.0001" placeholder="ex: 5.2300" value="${f.cambio_contratacao||""}" oninput="window._calcBRL()">
+            </div>
             <div class="ff ff-full"><label>Nota do câmbio</label><input id="f-cambio_notas" placeholder="ex: USD 1 = R$ 5,23 em Jan/2026" value="${f.cambio_notas||""}"></div>
+            <div id="modal-cambio-preview" style="grid-column:1/-1;font-size:11px;color:var(--muted);margin-top:4px"></div>
           </div>
           <div class="ff"><label>Responsável</label><input id="f-responsavel" value="${f.responsavel||""}"></div>
           <div class="ff"><label>Aprovado por</label><input id="f-aprovado_por" value="${f.aprovado_por||""}"></div>
