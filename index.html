@@ -232,6 +232,64 @@ function showApp(user){
   loadData();
 }
 
+
+async function fetchCambio(){
+  try {
+    // Get last 7 calendar days to guarantee 3 business days
+    const dias = [];
+    const hoje = new Date();
+    for(let i=1; i<=8; i++){
+      const d = new Date(hoje);
+      d.setDate(d.getDate()-i);
+      // Skip weekends
+      if(d.getDay()===0||d.getDay()===6) continue;
+      dias.push(d);
+      if(dias.length>=3) break;
+    }
+
+    const fmt = d => String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'-'+d.getFullYear();
+    const fmtBR = d => String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
+
+    const fetchRate = async (endpoint) => {
+      const r = await fetch(endpoint);
+      if(!r.ok) return [];
+      const j = await r.json();
+      return j.value||[];
+    };
+
+    // USD — last 3 business days
+    const startD = dias[dias.length-1];
+    const endD = dias[0];
+    const usdData = await fetchRate(
+      `https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarPeriodo(dataInicial=@i,dataFinalCotacao=@f)?@i='${fmt(startD)}'&@f='${fmt(endD)}'&$format=json&$orderby=dataHoraCotacao%20desc&$select=cotacaoVenda,dataHoraCotacao`
+    );
+
+    // EUR — same period
+    const eurData = await fetchRate(
+      `https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoMoedaPeriodo(moeda=@m,dataInicial=@i,dataFinalCotacao=@f)?@m='EUR'&@i='${fmt(startD)}'&@f='${fmt(endD)}'&$format=json&$orderby=dataHoraCotacao%20desc&$select=cotacaoVenda,dataHoraCotacao`
+    );
+
+    // Group by date — last closing rate per day
+    const byDay = (data) => {
+      const seen = {};
+      data.forEach(r => {
+        const day = r.dataHoraCotacao.slice(0,10);
+        if(!seen[day]) seen[day] = r.cotacaoVenda;
+      });
+      return Object.entries(seen).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,3).map(([d,v])=>({
+        label: fmtBR(new Date(d+'T12:00:00')),
+        value: v,
+        date: d
+      }));
+    };
+
+    S.cambio = { usd: byDay(usdData), eur: byDay(eurData), updated: new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) };
+    render();
+  } catch(e) {
+    S.cambio = { error: e.message };
+    render();
+  }
+}
 window._toggleExpand = function(id){
   const sid = String(id);
   S.expandedRow = S.expandedRow === sid ? null : sid;
@@ -303,7 +361,7 @@ const SBC={1:"#fee2e2",2:"#fef3c7",3:"#fff7ed",4:"#dcfce7",5:"#dbeafe"};
 const SCC={1:"#991b1b",2:"#92400e",3:"#9a3412",4:"#166534",5:"#1e40af"};
 
 const _charts={};
-const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,editForm:{},loading:true,saving:false,lastRefresh:null};
+const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,cambio:null,editForm:{},loading:true,saving:false,lastRefresh:null};
 
 async function sbFetch(path,opts={}){
   const {data:{session}} = await sb.auth.getSession();
@@ -318,6 +376,7 @@ async function sbFetch(path,opts={}){
 }
 
 async function loadData(){
+  fetchCambio();
   S.loading=true;render();
   try{
     const[t,r,c,sn]=await Promise.all([sbFetch("tools?order=status.asc,custo_brl_mes.desc.nullslast&select=*,mercado,missao_critica,benchmark_mercado,cambio_contratacao,cambio_notas"),sbFetch("risks?order=prioridade.asc&select=*"),sbFetch("changelog?order=data_evento.desc&select=*&limit=50"),sbFetch("snapshots_mensais?order=mes_referencia.asc&select=*")]);
@@ -555,7 +614,24 @@ function buildHTML(){
         </div>
       </div>
       <div class="header-right">
-        ${S.lastRefresh?`<span style="font-size:10px;color:rgba(255,255,255,.3);font-weight:600;letter-spacing:.04em;text-transform:uppercase">${S.lastRefresh.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span>`:""}
+        ${S.cambio&&!S.cambio.error?`
+      <div style="display:flex;align-items:center;gap:10px;margin-right:12px">
+        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border-radius:6px;padding:4px 10px">
+          <span style="font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em">USD</span>
+          <div style="display:flex;gap:4px">
+            ${(S.cambio.usd||[]).map((r,i)=>`<span style="font-size:11px;font-weight:${i===0?800:500};color:${i===0?"white":"rgba(255,255,255,.4)"}" title="${r.label}">R$ ${Number(r.value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}${i<(S.cambio.usd.length-1)?'':''}</span>`).join('<span style="color:rgba(255,255,255,.15);font-size:10px;margin:0 1px">·</span>')}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border-radius:6px;padding:4px 10px">
+          <span style="font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em">EUR</span>
+          <div style="display:flex;gap:4px">
+            ${(S.cambio.eur||[]).map((r,i)=>`<span style="font-size:11px;font-weight:${i===0?800:500};color:${i===0?"white":"rgba(255,255,255,.4)"}" title="${r.label}">R$ ${Number(r.value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`).join('<span style="color:rgba(255,255,255,.15);font-size:10px;margin:0 1px">·</span>')}
+          </div>
+        </div>
+        <span style="font-size:9px;color:rgba(255,255,255,.2)">PTAX ${S.cambio.updated||''}</span>
+      </div>`:''}
+      ${S.cambio&&S.cambio.error?`<span style="font-size:10px;color:rgba(255,100,100,.5)">câmbio indisponível</span>`:''}
+      ${S.lastRefresh?`<span style="font-size:10px;color:rgba(255,255,255,.3);font-weight:600;letter-spacing:.04em;text-transform:uppercase">${S.lastRefresh.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span>`:""}
         <button class="btn-refresh" id="btn-refresh">↻</button>
         <span class="user-pill">🔒 ${userEmail}</span>
         <button class="btn-logout" id="btn-logout">Sair</button>
