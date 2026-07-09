@@ -392,7 +392,7 @@ const SBC={1:"#fee2e2",2:"#fef3c7",3:"#fff7ed",4:"#dcfce7",5:"#dbeafe"};
 const SCC={1:"#991b1b",2:"#92400e",3:"#9a3412",4:"#166534",5:"#1e40af"};
 
 const _charts={};
-const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,cambio:null,editForm:{},loading:true,saving:false,lastRefresh:null};
+const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,cambio:null,editForm:{},loading:true,saving:false,lastRefresh:null,custoGran:"mensal",histGran:"mensal",gFiltros:{status:"ATIVA",dept:"all",cc:"all",cat:"all",mercado:"all",critica:"all"}};
 
 async function sbFetch(path,opts={}){
   const {data:{session}} = await sb.auth.getSession();
@@ -868,7 +868,16 @@ function buildCustos(ativas,total){
   const dc=depts.map(d=>({d,c:ativas.filter(t=>t.departamento===d).reduce((s,t)=>s+(parseFloat(t.custo_brl_mes)||0),0)})).filter(x=>x.c>0).sort((a,b)=>b.c-a.c);
   const mx=dc[0]?.c||1;
   const allWithCost=ativas.filter(t=>t.custo_brl_mes).sort((a,b)=>parseFloat(b.custo_brl_mes)-parseFloat(a.custo_brl_mes));
+  const GRAN={mensal:{f:1,l:"mês",s:"/mês"},trimestral:{f:3,l:"trimestre",s:"/tri"},anual:{f:12,l:"ano",s:"/ano"}};
+  const gr=GRAN[S.custoGran]||GRAN.mensal;const gf=gr.f;
+  const fBRLg=v=>Number((parseFloat(v)||0)*gf).toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0});
   return`
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+    <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:22px;font-weight:900;color:var(--navy)">${fBRLg(total)}</span><span style="font-size:12px;color:var(--muted);font-weight:600">custo gerido por ${gr.l}</span></div>
+    <div style="display:inline-flex;background:#F0EDE4;border-radius:8px;padding:3px">
+      ${[["mensal","Mensal"],["trimestral","Trimestral"],["anual","Anual"]].map(([k,l])=>`<button class="gran-btn" data-gran="${k}" style="border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;padding:6px 14px;border-radius:6px;background:${S.custoGran===k?"white":"transparent"};color:${S.custoGran===k?"var(--orange)":"var(--muted)"};box-shadow:${S.custoGran===k?"0 1px 3px rgba(0,0,0,.1)":"none"}">${l}</button>`).join("")}
+    </div>
+  </div>
   <!-- LINHA 1: 2 pizzas -->
   <div class="g2" style="margin-bottom:12px">
     <div class="card cp">
@@ -901,7 +910,7 @@ function buildCustos(ativas,total){
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
           <span style="font-size:13px;font-weight:700">${d.d}</span>
           <div>
-            <span style="font-size:13px;font-weight:800">${Number(d.c).toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0})}</span>
+            <span style="font-size:13px;font-weight:800">${fBRLg(d.c)}</span>
             <span class="pct-badge">${((d.c/total)*100).toFixed(1)}%</span>
           </div>
         </div>
@@ -925,7 +934,7 @@ function buildCustos(ativas,total){
               </div>
             </div>
             <div style="text-align:right;flex-shrink:0;margin-left:8px">
-              <span style="font-size:12.5px;font-weight:800">${Number(t.custo_brl_mes).toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0})}</span>
+              <span style="font-size:12.5px;font-weight:800">${fBRLg(t.custo_brl_mes)}</span>
               <span class="pct-badge">${((parseFloat(t.custo_brl_mes)/total)*100).toFixed(1)}%</span>
             </div>
           </div>
@@ -943,7 +952,7 @@ function buildCustos(ativas,total){
     ${[{t:"Dripify × Snov.io",m:"Cadências de prospecção multicanal duplicadas",e:1112.50,p:"MÉDIA"},{t:"Lusha × Snov.io",m:"Enriquecimento e validação de contactos B2B duplicado",e:368.75,p:"MÉDIA"},{t:"Claude RevOps + Claude MKT",m:"Dois contratos — consolidar num plano Team único",e:null,p:"MÉDIA"}].map(s=>`
       <div class="orow">
         <div><div style="font-size:13px;font-weight:700">${s.t}</div><div style="font-size:12px;color:var(--muted);margin-top:3px">${s.m}</div></div>
-        <div style="text-align:right;flex-shrink:0;margin-left:16px">${s.e?`<div style="font-size:14px;font-weight:800;color:var(--orange)">até R$ ${s.e.toLocaleString("pt-BR",{maximumFractionDigits:0})}/mês</div>`:`<div style="font-size:11px;color:var(--muted);font-weight:600">custo desconhecido</div>`}<span class="badge" style="color:${{"MÉDIA":"#d97706"}[s.p]};background:${{"MÉDIA":"#fffbeb"}[s.p]};margin-top:3px">${s.p}</span></div>
+        <div style="text-align:right;flex-shrink:0;margin-left:16px">${s.e?`<div style="font-size:14px;font-weight:800;color:var(--orange)">até ${fBRLg(s.e)}${gr.s}</div>`:`<div style="font-size:11px;color:var(--muted);font-weight:600">custo desconhecido</div>`}<span class="badge" style="color:${{"MÉDIA":"#d97706"}[s.p]};background:${{"MÉDIA":"#fffbeb"}[s.p]};margin-top:3px">${s.p}</span></div>
       </div>`).join("")}
   </div>`;}
 
@@ -952,6 +961,10 @@ function buildHistorico(){
   const contr_total = S.changelog.filter(c=>c.tipo_evento==="Contratação").length;
   const outros_total = S.changelog.length - canc_total - contr_total;
   const economia = S.changelog.filter(c=>c.tipo_evento==="Cancelamento"&&c.impacto_brl).reduce((s,c)=>s+(parseFloat(c.impacto_brl)||0),0);
+  const HGR={mensal:"Mensal",trimestral:"Trimestral",anual:"Anual"};
+  const perKey=d=>{if(!d)return"s/ data";const dt=new Date(d+"T12:00:00");const y=dt.getFullYear(),m=dt.getMonth();if(S.histGran==="anual")return`${y}`;if(S.histGran==="trimestral")return`${y} · T${Math.floor(m/3)+1}`;return`${y}-${String(m+1).padStart(2,"0")}`;};
+  const agg={};S.changelog.forEach(c=>{const k=perKey(c.data_evento);if(!agg[k])agg[k]={periodo:k,n:0,impacto:0,canc:0,contr:0};agg[k].n++;agg[k].impacto+=parseFloat(c.impacto_brl)||0;if(c.tipo_evento==="Cancelamento")agg[k].canc++;if(c.tipo_evento==="Contratação")agg[k].contr++;});
+  const aggArr=Object.values(agg).sort((a,b)=>a.periodo<b.periodo?1:-1);
   return`
   <!-- METRICS HISTORICO -->
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
@@ -980,6 +993,27 @@ function buildHistorico(){
       <span style="font-size:11px;color:var(--muted);font-weight:600">cancelamentos · contratações · outros</span>
     </div>
     <div class="chart-wrap"><canvas id="line-hist"></canvas></div>
+  </div>
+
+  <!-- ANÁLISE POR PERÍODO -->
+  <div class="card cp" style="margin-bottom:12px">
+    <div class="card-header" style="margin:-18px -20px 14px">
+      <span class="card-title">Análise por período</span>
+      <div style="display:inline-flex;background:#F0EDE4;border-radius:8px;padding:3px">
+        ${[["mensal","Mensal"],["trimestral","Trimestral"],["anual","Anual"]].map(([k,l])=>`<button class="histgran-btn" data-histgran="${k}" style="border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;padding:6px 14px;border-radius:6px;background:${S.histGran===k?"white":"transparent"};color:${S.histGran===k?"var(--orange)":"var(--muted)"};box-shadow:${S.histGran===k?"0 1px 3px rgba(0,0,0,.1)":"none"}">${l}</button>`).join("")}
+      </div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>Período (${HGR[S.histGran]})</th><th>Eventos</th><th>Cancelamentos</th><th>Contratações</th><th>Impacto líquido BRL/mês</th></tr></thead>
+      <tbody>${aggArr.map((a,i)=>`<tr style="background:${i%2===0?"white":"#FDFCF8"}">
+        <td style="font-weight:800;white-space:nowrap">${a.periodo}</td>
+        <td style="font-weight:700">${a.n}</td>
+        <td style="color:${a.canc?"#dc2626":"#ccc"};font-weight:700">${a.canc||"—"}</td>
+        <td style="color:${a.contr?"#15803d":"#ccc"};font-weight:700">${a.contr||"—"}</td>
+        <td style="font-weight:800;color:${a.impacto<0?"#15803d":a.impacto>0?"#dc2626":"#ccc"}">${a.impacto?(a.impacto>0?"+":"")+Number(a.impacto).toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0}):"—"}</td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">Impacto líquido = soma do impacto BRL/mês dos eventos no período (negativo = economia por cancelamentos).</div>
   </div>
 
   <!-- LOG TABLE -->
@@ -1063,6 +1097,8 @@ function attachEvents(){
   document.getElementById("search-input")?.addEventListener("input",e=>{S.search=e.target.value;render();});
   document.getElementById("filter-status")?.addEventListener("change",e=>{S.fStatus=e.target.value;render();});
   document.getElementById("filter-dept")?.addEventListener("change",e=>{S.fDept=e.target.value;render();});
+  document.querySelectorAll(".gran-btn").forEach(b=>b.addEventListener("click",()=>{S.custoGran=b.dataset.gran;render();}));
+  document.querySelectorAll(".histgran-btn").forEach(b=>b.addEventListener("click",()=>{S.histGran=b.dataset.histgran;render();}));
   document.querySelectorAll(".edit-btn").forEach(btn=>btn.addEventListener("click",()=>{
     const tool=S.tools.find(t=>t.id==btn.dataset.id);if(!tool)return;
     S.editTool=tool;S.editForm={responsavel:tool.responsavel||"",aprovado_por:tool.aprovado_por||"",centro_de_custo:tool.centro_de_custo||"",score_utilizacao:tool.score_utilizacao||"",nps_interno:tool.nps_interno||"",substituto:tool.substituto||"",data_contratacao:tool.data_contratacao||"",ultima_revisao:tool.ultima_revisao||"",acao_pendente:tool.acao_pendente||"",custo_original:tool.custo_original||"",moeda:tool.moeda||"BRL",custo_brl_mes:tool.custo_brl_mes||"",cambio_contratacao:tool.cambio_contratacao||"",cambio_notas:tool.cambio_notas||""};
