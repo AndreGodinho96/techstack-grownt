@@ -745,7 +745,7 @@ function buildStack(){
                   <div style="font-size:13px;font-weight:700;color:#1A1F2E">R$ ${Number(t.cambio_contratacao).toLocaleString("pt-BR",{minimumFractionDigits:4})}</div>
                   ${t.cambio_notas?`<div style="font-size:10px;color:var(--muted)">${t.cambio_notas}</div>`:""}
                 </div>`:""}
-                ${S.cambio&&!S.cambio.error?(()=>{
+                ${S.cambio&&!S.cambio.error&&t.recorrencia!=="Anual"&&(t.moeda==="USD"||t.moeda==="EUR")?(()=>{
                   const taxaHoje = t.moeda==="USD"?S.cambio.usd?.[0]?.value:S.cambio.eur?.[0]?.value;
                   const fatorMes = t.recorrencia==="Anual" ? 12 : 1;
                   const brlHoje = taxaHoje ? (t.custo_original*taxaHoje)/fatorMes : null;
