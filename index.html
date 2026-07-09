@@ -392,7 +392,7 @@ const SBC={1:"#fee2e2",2:"#fef3c7",3:"#fff7ed",4:"#dcfce7",5:"#dbeafe"};
 const SCC={1:"#991b1b",2:"#92400e",3:"#9a3412",4:"#166534",5:"#1e40af"};
 
 const _charts={};
-const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,cambio:null,editForm:{},loading:true,saving:false,lastRefresh:null,custoGran:"mensal",histGran:"mensal",gFiltros:{status:"ATIVA",dept:"all",cc:"all",cat:"all",mercado:"all",critica:"all"}};
+const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,cambio:null,editForm:{},loading:true,saving:false,lastRefresh:null,custoGran:"mensal",histGran:"mensal",gFiltros:{status:{mode:"in",vals:["ATIVA"]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},mercado:{mode:"in",vals:[]},critica:"all"},openFilter:null};
 
 async function sbFetch(path,opts={}){
   const {data:{session}} = await sb.auth.getSession();
@@ -446,7 +446,8 @@ function destroyCharts() {
 function buildGestao(ativas,total){
   const hoje=new Date();
   const F=S.gFiltros;
-  ativas=S.tools.filter(t=>(F.status==="all"||t.status===F.status)&&(F.dept==="all"||t.departamento===F.dept)&&(F.cc==="all"||t.centro_de_custo===F.cc)&&(F.cat==="all"||t.categoria_funcional===F.cat)&&(F.mercado==="all"||(t.mercado||"Global")===F.mercado)&&(F.critica==="all"||(F.critica==="sim"?!!t.missao_critica:!t.missao_critica)));
+  const pf=(f,v)=>{if(!f||!f.vals||!f.vals.length)return true;const has=f.vals.includes(v);return f.mode==="out"?!has:has;};
+  ativas=S.tools.filter(t=>pf(F.status,t.status)&&pf(F.dept,t.departamento)&&pf(F.cc,t.centro_de_custo)&&pf(F.cat,t.categoria_funcional)&&pf(F.mercado,(t.mercado||"Global"))&&(F.critica==="all"||(F.critica==="sim"?!!t.missao_critica:!t.missao_critica)));
   total=ativas.reduce((s,t)=>s+(parseFloat(t.custo_brl_mes)||0),0)||1;
   const ccs=[...new Set(S.tools.map(t=>t.centro_de_custo).filter(Boolean))].sort();
   const catsF=[...new Set(S.tools.map(t=>t.categoria_funcional).filter(Boolean))].sort();
@@ -457,6 +458,15 @@ function buildGestao(ativas,total){
   const SIDECOL={L:{bg:"linear-gradient(180deg,#F15F38,#E8461E)",c:"white"},C:{bg:"var(--navy)",c:"white"},R:{bg:"linear-gradient(180deg,#99C5C8,#5FA9AD)",c:"#0f2f31"}};
   const byStage=k=>S.tools.filter(t=>t.etapa_funil===k);
   const transv=byStage("Transversal");
+  const gfSummary=(f,labelFn)=>{if(!f.vals||!f.vals.length)return"todos";const names=f.vals.map(v=>labelFn?labelFn(v):v);const shown=names.length<=2?names.join(", "):names.length+" selec.";return(f.mode==="out"?"exceto ":"")+shown;};
+  const gfDrop=(dim,label,values,labelFn)=>{const f=F[dim];const open=S.openFilter===dim;const active=f.vals&&f.vals.length;return`<div class="gf-wrap" style="position:relative">
+    <button class="gf-btn" data-gf="${dim}" style="border:1px solid ${active?"var(--orange)":"#E5E2D8"};background:${active?"#FDF0EC":"white"};border-radius:7px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--navy);display:flex;align-items:center;gap:6px">${label}: <span style="color:${active?"var(--orange)":"var(--muted)"};font-weight:600">${gfSummary(f,labelFn)}</span> <span style="font-size:9px;color:var(--muted)">▾</span></button>
+    ${open?`<div class="gf-pop" style="position:absolute;top:calc(100% + 4px);left:0;z-index:50;background:white;border:1px solid #E5E2D8;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:10px;min-width:210px;max-height:300px;overflow-y:auto">
+      <div style="display:flex;gap:4px;margin-bottom:8px">${[["in","Incluir"],["out","Excluir"]].map(([m,l])=>`<button class="gf-mode" data-gf="${dim}" data-mode="${m}" style="flex:1;border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;padding:5px;border-radius:5px;background:${f.mode===m?(m==="out"?"#fef2f2":"#ecfdf5"):"#F0EDE4"};color:${f.mode===m?(m==="out"?"#dc2626":"#047857"):"var(--muted)"}">${l}</button>`).join("")}</div>
+      ${values.map(v=>`<label style="display:flex;align-items:center;gap:8px;padding:4px 2px;cursor:pointer;font-size:12px"><input type="checkbox" class="gf-chk" data-gf="${dim}" data-val="${(""+v).replace(/"/g,"&quot;")}"${f.vals.includes(v)?" checked":""} style="cursor:pointer">${labelFn?labelFn(v):v}</label>`).join("")}
+      <div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid #F0EDE4"><button class="gf-clear" data-gf="${dim}" style="border:none;background:none;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Limpar</button><button class="gf-close" style="border:none;background:var(--navy);color:white;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;border-radius:5px;padding:4px 12px">Aplicar</button></div>
+    </div>`:""}
+  </div>`;};
   const renovacoes=ativas.filter(t=>t.prox_renovacao).map(t=>{const d=new Date(t.prox_renovacao+"T12:00:00");return{...t,_d:d,_dias:Math.ceil((d-hoje)/(1000*60*60*24))};}).filter(t=>t._dias>=0&&t._dias<=90).sort((a,b)=>a._dias-b._dias);
   const totalRenovacoes=renovacoes.reduce((s,t)=>s+(parseFloat(t.custo_brl_mes)||0),0);
   const snaps=[...(S.snapshots||[])].sort((a,b)=>new Date(a.mes_referencia)-new Date(b.mes_referencia));
@@ -475,15 +485,15 @@ function buildGestao(ativas,total){
   const PB={red:"#fef2f2",amber:"#fffbeb",green:"#f0fdf4"};
   const fB=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0});
   return`
-  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center;background:white;border:1px solid #EFEADF;border-radius:10px;padding:10px 12px">
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center;background:white;border:1px solid #EFEADF;border-radius:10px;padding:10px 12px;position:relative;z-index:10">
     <span style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;margin-right:2px">Filtros</span>
-    <select class="gf-sel" data-gf="status"><option value="all">Status: todos</option>${statsF.map(s=>`<option value="${s}"${F.status===s?" selected":""}>${SM[s]?.l||s}</option>`).join("")}</select>
-    <select class="gf-sel" data-gf="dept"><option value="all">Depto: todos</option>${deptsF.map(d=>`<option value="${d}"${F.dept===d?" selected":""}>${d}</option>`).join("")}</select>
-    <select class="gf-sel" data-gf="cc"><option value="all">Centro custo: todos</option>${ccs.map(c=>`<option value="${c}"${F.cc===c?" selected":""}>${c}</option>`).join("")}</select>
-    <select class="gf-sel" data-gf="cat"><option value="all">Categoria: todas</option>${catsF.map(c=>`<option value="${c}"${F.cat===c?" selected":""}>${c}</option>`).join("")}</select>
-    <select class="gf-sel" data-gf="mercado"><option value="all">Mercado: todos</option>${mercsF.map(m=>`<option value="${m}"${F.mercado===m?" selected":""}>${m}</option>`).join("")}</select>
-    <select class="gf-sel" data-gf="critica"><option value="all">Missão crítica: todas</option><option value="sim"${F.critica==="sim"?" selected":""}>Só críticas</option><option value="nao"${F.critica==="nao"?" selected":""}>Não críticas</option></select>
-    <button id="gf-reset" style="border:1px solid #E5E2D8;background:#F7F5EF;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--muted)">Limpar</button>
+    ${gfDrop("status","Status",statsF,s=>SM[s]?.l||s)}
+    ${gfDrop("dept","Depto",deptsF)}
+    ${gfDrop("cc","Centro custo",ccs)}
+    ${gfDrop("cat","Categoria",catsF)}
+    ${gfDrop("mercado","Mercado",mercsF)}
+    <select id="gf-critica" style="border:1px solid #E5E2D8;background:white;border-radius:7px;padding:6px 10px;font-size:12px;font-weight:700;font-family:inherit;color:var(--navy);cursor:pointer"><option value="all">Missão crítica: todas</option><option value="sim"${F.critica==="sim"?" selected":""}>Só críticas</option><option value="nao"${F.critica==="nao"?" selected":""}>Não críticas</option></select>
+    <button id="gf-reset" style="border:1px solid #E5E2D8;background:#F7F5EF;border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--muted)">Limpar tudo</button>
     <span style="font-size:11px;color:var(--muted);font-weight:700;margin-left:auto">${ativas.length} ferramenta${ativas.length!==1?"s":""} · ${fB(total)}/mês</span>
   </div>
   <div class="g2" style="margin-bottom:12px;grid-template-columns:1fr 1fr 1fr 1fr">
@@ -1147,8 +1157,15 @@ function attachEvents(){
   document.getElementById("filter-dept")?.addEventListener("change",e=>{S.fDept=e.target.value;render();});
   document.querySelectorAll(".gran-btn").forEach(b=>b.addEventListener("click",()=>{S.custoGran=b.dataset.gran;render();}));
   document.querySelectorAll(".histgran-btn").forEach(b=>b.addEventListener("click",()=>{S.histGran=b.dataset.histgran;render();}));
-  document.querySelectorAll(".gf-sel").forEach(s=>s.addEventListener("change",e=>{S.gFiltros[e.target.dataset.gf]=e.target.value;render();}));
-  document.getElementById("gf-reset")?.addEventListener("click",()=>{S.gFiltros={status:"all",dept:"all",cc:"all",cat:"all",mercado:"all",critica:"all"};render();});
+  document.querySelectorAll(".gf-btn").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();const d=b.dataset.gf;S.openFilter=S.openFilter===d?null:d;render();}));
+  document.querySelectorAll(".gf-pop").forEach(p=>p.addEventListener("click",e=>e.stopPropagation()));
+  document.querySelectorAll(".gf-mode").forEach(b=>b.addEventListener("click",()=>{S.gFiltros[b.dataset.gf].mode=b.dataset.mode;render();}));
+  document.querySelectorAll(".gf-chk").forEach(c=>c.addEventListener("change",()=>{const arr=S.gFiltros[c.dataset.gf].vals;const v=c.dataset.val;const i=arr.indexOf(v);if(i>=0)arr.splice(i,1);else arr.push(v);render();}));
+  document.querySelectorAll(".gf-clear").forEach(b=>b.addEventListener("click",()=>{S.gFiltros[b.dataset.gf].vals=[];render();}));
+  document.querySelectorAll(".gf-close").forEach(b=>b.addEventListener("click",()=>{S.openFilter=null;render();}));
+  document.getElementById("gf-critica")?.addEventListener("change",e=>{S.gFiltros.critica=e.target.value;render();});
+  document.getElementById("gf-reset")?.addEventListener("click",()=>{S.gFiltros={status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},mercado:{mode:"in",vals:[]},critica:"all"};S.openFilter=null;render();});
+  if(!window._gfOutside){window._gfOutside=true;document.addEventListener("click",e=>{if(S.openFilter&&e.target.closest&&!e.target.closest(".gf-wrap")){S.openFilter=null;render();}});}
   document.querySelectorAll(".edit-btn").forEach(btn=>btn.addEventListener("click",()=>{
     const tool=S.tools.find(t=>t.id==btn.dataset.id);if(!tool)return;
     S.editTool=tool;S.editForm={responsavel:tool.responsavel||"",aprovado_por:tool.aprovado_por||"",centro_de_custo:tool.centro_de_custo||"",score_utilizacao:tool.score_utilizacao||"",nps_interno:tool.nps_interno||"",substituto:tool.substituto||"",data_contratacao:tool.data_contratacao||"",ultima_revisao:tool.ultima_revisao||"",acao_pendente:tool.acao_pendente||"",custo_original:tool.custo_original||"",moeda:tool.moeda||"BRL",custo_brl_mes:tool.custo_brl_mes||"",cambio_contratacao:tool.cambio_contratacao||"",cambio_notas:tool.cambio_notas||""};
