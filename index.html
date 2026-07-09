@@ -727,6 +727,8 @@ function buildStack(){
           <div style="padding:16px 20px 20px;border-top:2px solid #E8461E;border-bottom:1px solid #F0EDE4;animation:fadeIn .15s ease">
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px 24px;margin-bottom:12px">
               <div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Status</div><div><span class="badge" style="color:${sm.c};background:${sm.b}">${sm.l}</span></div></div>
+              <div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Centro de custo</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.centro_de_custo||"—"}</div></div>
+              ${t.data_cancelamento?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Cancelada em</div><div style="font-size:12px;color:#dc2626;font-weight:600">${new Date(t.data_cancelamento+"T12:00:00").toLocaleDateString("pt-BR")}</div></div>`:""}
               ${t.para_que_serve?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Para que serve</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.para_que_serve}</div></div>`:""}
               ${t.login_acesso?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Acesso / Login</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.login_acesso}</div></div>`:""}
               ${t.prox_renovacao?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Próx. renovação</div><div style="font-size:12px;font-weight:700;color:${new Date(t.prox_renovacao)<new Date(Date.now()+90*86400000)?"#dc2626":"#1A1F2E"}">${new Date(t.prox_renovacao+"T12:00:00").toLocaleDateString("pt-BR")}</div></div>`:""}
@@ -766,8 +768,10 @@ function buildStack(){
               ${t.mercado&&t.mercado!=="Global"?`<div><div style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Mercado</div><div style="font-size:12px;color:#1A1F2E;font-weight:500">${t.mercado}</div></div>`:""}
               ${t.missao_critica?`<div><div style="font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Missão crítica</div><div style="font-size:12px;font-weight:700;color:#dc2626">⚠ Sim</div></div>`:""}
             </div>
-            ${(t.acao_pendente||t.risco_obs||t.alertas||t.benchmark_notas)?`<div style="display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid #F0EDE4">
+            ${(t.acao_pendente||t.risco_obs||t.alertas||t.benchmark_notas||t.justificativa_contratacao||t.responsavel_contratacao)?`<div style="display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid #F0EDE4">
               ${t.acao_pendente?`<div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:11px;font-weight:700;background:#fef3c7;color:#b45309;padding:2px 7px;border-radius:4px;flex-shrink:0">AÇÃO</span><span style="font-size:12px;color:#1A1F2E">${t.acao_pendente}</span></div>`:""}
+              ${t.justificativa_contratacao?`<div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:11px;font-weight:700;background:#ecfdf5;color:#047857;padding:2px 7px;border-radius:4px;flex-shrink:0">JUSTIFICATIVA</span><span style="font-size:12px;color:#1A1F2E">${t.justificativa_contratacao}</span></div>`:""}
+              ${t.responsavel_contratacao?`<div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:11px;font-weight:700;background:#f3f4f6;color:#374151;padding:2px 7px;border-radius:4px;flex-shrink:0">CONTRATOU</span><span style="font-size:12px;color:#1A1F2E">${t.responsavel_contratacao}</span></div>`:""}
               ${t.risco_obs?`<div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:11px;font-weight:700;background:#fef2f2;color:#dc2626;padding:2px 7px;border-radius:4px;flex-shrink:0">RISCO</span><span style="font-size:12px;color:#1A1F2E">${t.risco_obs}</span></div>`:""}
               ${t.alertas?`<div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:11px;font-weight:700;background:#fef2f2;color:#dc2626;padding:2px 7px;border-radius:4px;flex-shrink:0">ALERTA</span><span style="font-size:12px;color:#1A1F2E">${t.alertas}</span></div>`:""}
               ${t.benchmark_notas?`<div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:11px;font-weight:700;background:#e0f2fe;color:#0369a1;padding:2px 7px;border-radius:4px;flex-shrink:0">NOTA</span><span style="font-size:12px;color:#1A1F2E">${t.benchmark_notas}</span></div>`:""}
@@ -1005,6 +1009,7 @@ function buildModal(){
       <div class="mhdr"><span class="mtitle"><span class="mtitle-dot"></span>${t.ferramenta}</span><button class="mclose" id="modal-close">×</button></div>
       <div class="mbody">
         <div class="fg">
+          <div class="ff ff-full"><label>Status</label><select id="f-status">${["ATIVA","EM_AVALIAÇÃO","FORA_DA_GESTÃO","CANCELADA"].map(s=>`<option value="${s}"${(f.status||"ATIVA")===s?" selected":""}>${(SM[s]||{l:s}).l}</option>`).join("")}</select></div>
           <div class="fg" style="background:#F4F1EA;padding:12px;border-radius:8px;margin-bottom:8px;grid-column:1/-1">
             <div style="display:flex;align-items:center;justify-content:space-between;grid-column:1/-1;margin-bottom:10px">
               <span style="font-size:10px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.06em">💰 Custo e Câmbio</span>
@@ -1038,6 +1043,9 @@ function buildModal(){
           <div class="ff"><label>Data contratação</label><input type="date" id="f-data_c" value="${f.data_contratacao||""}"></div>
           <div class="ff"><label>Última revisão</label><input type="date" id="f-ultima_r" value="${f.ultima_revisao||""}"></div>
           <div class="ff ff-full"><label>Ação pendente</label><input id="f-acao" value="${f.acao_pendente||""}"></div>
+          <div class="ff ff-full"><label>Justificativa da contratação</label><textarea id="f-justif_contr" rows="2" style="width:100%;font-family:inherit;font-size:13px;padding:8px;border:1px solid #E5E2D8;border-radius:6px;resize:vertical;box-sizing:border-box">${f.justificativa_contratacao||""}</textarea></div>
+          <div class="ff"><label>Responsável pela contratação</label><input id="f-resp_contr" value="${f.responsavel_contratacao||""}"></div>
+          <div class="ff"><label>Data de cancelamento</label><input type="date" id="f-data_cancel" value="${f.data_cancelamento||""}"></div>
         </div>
         <div class="mfoot">
           <button class="bcnl" id="modal-cancel">Cancelar</button>
@@ -1069,7 +1077,7 @@ function attachEvents(){
   document.getElementById("modal-close")?.addEventListener("click",closeModal);
   document.getElementById("modal-cancel")?.addEventListener("click",closeModal);
   document.getElementById("modal-save")?.addEventListener("click",async()=>{
-    const gv=id=>document.getElementById(id)?.value||null;const gn=id=>{const v=document.getElementById(id)?.value;return v?parseFloat(v):null;};const payload={responsavel:gv("f-responsavel"),aprovado_por:gv("f-aprovado_por"),centro_de_custo:gv("f-centro"),score_utilizacao:gv("f-score")?parseInt(gv("f-score")):null,nps_interno:gv("f-nps"),substituto:gv("f-substituto"),data_contratacao:gv("f-data_c"),ultima_revisao:gv("f-ultima_r"),acao_pendente:gv("f-acao"),custo_original:gn("f-custo_original"),moeda:gv("f-moeda")||"BRL",custo_brl_mes:gn("f-custo_brl_mes"),cambio_contratacao:gn("f-cambio"),cambio_notas:gv("f-cambio_notas")};
+    const gv=id=>document.getElementById(id)?.value||null;const gn=id=>{const v=document.getElementById(id)?.value;return v?parseFloat(v):null;};const payload={responsavel:gv("f-responsavel"),aprovado_por:gv("f-aprovado_por"),centro_de_custo:gv("f-centro"),score_utilizacao:gv("f-score")?parseInt(gv("f-score")):null,nps_interno:gv("f-nps"),substituto:gv("f-substituto"),data_contratacao:gv("f-data_c"),ultima_revisao:gv("f-ultima_r"),acao_pendente:gv("f-acao"),custo_original:gn("f-custo_original"),moeda:gv("f-moeda")||"BRL",custo_brl_mes:gn("f-custo_brl_mes"),cambio_contratacao:gn("f-cambio"),cambio_notas:gv("f-cambio_notas"),status:gv("f-status")||"ATIVA",justificativa_contratacao:gv("f-justif_contr"),responsavel_contratacao:gv("f-resp_contr"),data_cancelamento:gv("f-data_cancel")};
     S.saving=true;render();
     try{await patchTool(S.editTool.id,payload);S.tools=S.tools.map(t=>t.id===S.editTool.id?{...t,...payload}:t);toast("Alteração guardada");S.editTool=null;}
     catch(e){toast("Erro ao guardar",true);}
