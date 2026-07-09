@@ -392,7 +392,7 @@ const SBC={1:"#fee2e2",2:"#fef3c7",3:"#fff7ed",4:"#dcfce7",5:"#dbeafe"};
 const SCC={1:"#991b1b",2:"#92400e",3:"#9a3412",4:"#166534",5:"#1e40af"};
 
 const _charts={};
-const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,cambio:null,editForm:{},loading:true,saving:false,lastRefresh:null,custoGran:"mensal",histGran:"mensal",gFiltros:{status:{mode:"in",vals:["ATIVA"]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},mercado:{mode:"in",vals:[]},critica:"all"},sFiltros:{status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}},openFilter:null};
+const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,cambio:null,editForm:{},loading:true,saving:false,lastRefresh:null,custoGran:"mensal",histGran:"mensal",gFiltros:{status:{mode:"in",vals:["ATIVA"]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},mercado:{mode:"in",vals:[]},critica:"all"},sFiltros:{status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}},rFiltros:{prioridade:{mode:"in",vals:[]},tipo:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}},openFilter:null};
 
 async function sbFetch(path,opts={}){
   const {data:{session}} = await sb.auth.getSession();
@@ -424,12 +424,11 @@ const getAtivas=()=>S.tools.filter(t=>t.status==="ATIVA");
 const getRO=()=>S.risks.filter(r=>r.status_acao!=="Concluído");
 const getDepts=()=>[...new Set(S.tools.map(t=>t.departamento).filter(Boolean))].sort();
 const getStatuses=()=>[...new Set(S.tools.map(t=>t.status))];
-function pf(f,v){if(!f||!f.vals||!f.vals.length)return true;const has=f.vals.includes(v);return f.mode==="out"?!has:has;}
-function gfSummary(f,labelFn){if(!f.vals||!f.vals.length)return"todos";const names=f.vals.map(v=>labelFn?labelFn(v):v);const shown=names.length<=2?names.join(", "):names.length+" selec.";return(f.mode==="out"?"exceto ":"")+shown;}
-function gfDrop(scope,dim,label,values,labelFn){const obj=scope==="g"?S.gFiltros:S.sFiltros;const f=obj[dim];const key=scope+":"+dim;const open=S.openFilter===key;const active=f.vals&&f.vals.length;return`<div class="gf-wrap" style="position:relative">
+function pf(f,v){if(!f||!f.vals||!f.vals.length)return true;return f.vals.includes(v);}
+function gfSummary(f,labelFn){if(!f.vals||!f.vals.length)return"todos";const names=f.vals.map(v=>labelFn?labelFn(v):v);return names.length<=2?names.join(", "):names.length+" selec.";}
+function gfDrop(scope,dim,label,values,labelFn){const obj={g:S.gFiltros,s:S.sFiltros,r:S.rFiltros}[scope];const f=obj[dim];const key=scope+":"+dim;const open=S.openFilter===key;const active=f.vals&&f.vals.length;return`<div class="gf-wrap" style="position:relative">
     <button class="gf-btn" data-scope="${scope}" data-gf="${dim}" style="border:1px solid ${active?"var(--orange)":"#E5E2D8"};background:${active?"#FDF0EC":"white"};border-radius:7px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--navy);display:flex;align-items:center;gap:6px">${label}: <span style="color:${active?"var(--orange)":"var(--muted)"};font-weight:600">${gfSummary(f,labelFn)}</span> <span style="font-size:9px;color:var(--muted)">▾</span></button>
     ${open?`<div class="gf-pop" style="position:absolute;top:calc(100% + 4px);left:0;z-index:50;background:white;border:1px solid #E5E2D8;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:10px;min-width:210px;max-height:300px;overflow-y:auto">
-      <div style="display:flex;gap:4px;margin-bottom:8px">${[["in","Incluir"],["out","Excluir"]].map(([m,l])=>`<button class="gf-mode" data-scope="${scope}" data-gf="${dim}" data-mode="${m}" style="flex:1;border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;padding:5px;border-radius:5px;background:${f.mode===m?(m==="out"?"#fef2f2":"#ecfdf5"):"#F0EDE4"};color:${f.mode===m?(m==="out"?"#dc2626":"#047857"):"var(--muted)"}">${l}</button>`).join("")}</div>
       ${values.map(v=>`<label style="display:flex;align-items:center;gap:8px;padding:4px 2px;cursor:pointer;font-size:12px"><input type="checkbox" class="gf-chk" data-scope="${scope}" data-gf="${dim}" data-val="${(""+v).replace(/"/g,"&quot;")}"${f.vals.includes(v)?" checked":""} style="cursor:pointer">${labelFn?labelFn(v):v}</label>`).join("")}
       <div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid #F0EDE4"><button class="gf-clear" data-scope="${scope}" data-gf="${dim}" style="border:none;background:none;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Limpar</button><button class="gf-close" style="border:none;background:var(--navy);color:white;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;border-radius:5px;padding:4px 12px">Aplicar</button></div>
     </div>`:""}
@@ -846,15 +845,21 @@ function buildStack(){
 }
 
 function buildRiscos(ro){
+  const RF=S.rFiltros;
+  const depOf=r=>{const t=S.tools.find(x=>x.id===r.tool_id);return t?t.departamento:null;};
+  const tiposAll=[...new Set(getRO().map(r=>r.tipo_risco).filter(Boolean))];
+  ro=getRO().filter(r=>pf(RF.prioridade,r.prioridade)&&pf(RF.tipo,r.tipo_risco)&&pf(RF.dept,depOf(r)));
   const total_r = ro.length;
-  if(!total_r) return`<div class="card"><div class="empty">Sem riscos abertos ✓</div></div>`;
   const alta = ro.filter(r=>r.prioridade==="ALTA").length;
   const media = ro.filter(r=>r.prioridade==="MÉDIA").length;
   const baixa = ro.filter(r=>r.prioridade==="BAIXA").length;
   const tipos = [...new Set(ro.map(r=>r.tipo_risco).filter(Boolean))];
   const PC={ALTA:"#dc2626",MÉDIA:"#d97706",BAIXA:"#16a34a"};
   const PB={ALTA:"#fef2f2",MÉDIA:"#fffbeb",BAIXA:"#f0fdf4"};
-  return`
+  const anyRF=RF.prioridade.vals.length||RF.tipo.vals.length||RF.dept.vals.length;
+  const filtBar=`<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center;background:white;border:1px solid #EFEADF;border-radius:10px;padding:10px 12px;position:relative;z-index:10"><span style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;margin-right:2px">Filtros</span>${gfDrop("r","prioridade","Prioridade",["ALTA","MÉDIA","BAIXA"])}${gfDrop("r","tipo","Tipo",tiposAll)}${gfDrop("r","dept","Depto",getDepts())}${anyRF?`<button id="rf-reset" style="border:1px solid #E5E2D8;background:#F7F5EF;border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--muted)">Limpar</button>`:""}<span style="font-size:11px;color:var(--muted);font-weight:700;margin-left:auto">${total_r} risco${total_r!==1?"s":""}</span></div>`;
+  if(!total_r) return filtBar+`<div class="card"><div class="empty">Nenhum risco com estes filtros</div></div>`;
+  return filtBar+`
   <!-- CHARTS RISCOS -->
   <div class="g2" style="margin-bottom:12px">
     <div class="card cp">
@@ -1155,13 +1160,13 @@ function attachEvents(){
   document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{S.tab=btn.dataset.tab;render();}));
   document.getElementById("search-input")?.addEventListener("input",e=>{S.search=e.target.value;render();});
   document.getElementById("sf-reset")?.addEventListener("click",()=>{S.sFiltros={status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}};S.search="";S.openFilter=null;render();});
+  document.getElementById("rf-reset")?.addEventListener("click",()=>{S.rFiltros={prioridade:{mode:"in",vals:[]},tipo:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}};S.openFilter=null;render();});
   document.querySelectorAll(".gran-btn").forEach(b=>b.addEventListener("click",()=>{S.custoGran=b.dataset.gran;render();}));
   document.querySelectorAll(".histgran-btn").forEach(b=>b.addEventListener("click",()=>{S.histGran=b.dataset.histgran;render();}));
   document.querySelectorAll(".gf-btn").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();const key=b.dataset.scope+":"+b.dataset.gf;S.openFilter=S.openFilter===key?null:key;render();}));
   document.querySelectorAll(".gf-pop").forEach(p=>p.addEventListener("click",e=>e.stopPropagation()));
-  document.querySelectorAll(".gf-mode").forEach(b=>b.addEventListener("click",()=>{(b.dataset.scope==="g"?S.gFiltros:S.sFiltros)[b.dataset.gf].mode=b.dataset.mode;render();}));
-  document.querySelectorAll(".gf-chk").forEach(c=>c.addEventListener("change",()=>{const arr=(c.dataset.scope==="g"?S.gFiltros:S.sFiltros)[c.dataset.gf].vals;const v=c.dataset.val;const i=arr.indexOf(v);if(i>=0)arr.splice(i,1);else arr.push(v);render();}));
-  document.querySelectorAll(".gf-clear").forEach(b=>b.addEventListener("click",()=>{(b.dataset.scope==="g"?S.gFiltros:S.sFiltros)[b.dataset.gf].vals=[];render();}));
+  document.querySelectorAll(".gf-chk").forEach(c=>c.addEventListener("change",()=>{const arr=({g:S.gFiltros,s:S.sFiltros,r:S.rFiltros}[c.dataset.scope])[c.dataset.gf].vals;const v=c.dataset.val;const i=arr.indexOf(v);if(i>=0)arr.splice(i,1);else arr.push(v);render();}));
+  document.querySelectorAll(".gf-clear").forEach(b=>b.addEventListener("click",()=>{({g:S.gFiltros,s:S.sFiltros,r:S.rFiltros}[b.dataset.scope])[b.dataset.gf].vals=[];render();}));
   document.querySelectorAll(".gf-close").forEach(b=>b.addEventListener("click",()=>{S.openFilter=null;render();}));
   document.getElementById("gf-critica")?.addEventListener("change",e=>{S.gFiltros.critica=e.target.value;render();});
   document.getElementById("gf-reset")?.addEventListener("click",()=>{S.gFiltros={status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},mercado:{mode:"in",vals:[]},critica:"all"};S.openFilter=null;render();});
