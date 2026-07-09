@@ -747,7 +747,8 @@ function buildStack(){
                 </div>`:""}
                 ${S.cambio&&!S.cambio.error?(()=>{
                   const taxaHoje = t.moeda==="USD"?S.cambio.usd?.[0]?.value:S.cambio.eur?.[0]?.value;
-                  const brlHoje = taxaHoje ? t.custo_original*taxaHoje : null;
+                  const fatorMes = t.recorrencia==="Anual" ? 12 : 1;
+                  const brlHoje = taxaHoje ? (t.custo_original*taxaHoje)/fatorMes : null;
                   const varPct = t.cambio_contratacao&&taxaHoje ? ((taxaHoje-t.cambio_contratacao)/t.cambio_contratacao*100) : null;
                   return taxaHoje?`<div>
                   <div style="font-size:9px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Câmbio hoje (PTAX)</div>
