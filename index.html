@@ -452,140 +452,141 @@ function destroyCharts() {
   Object.keys(_charts).forEach(k => { try { _charts[k].destroy(); } catch(e) {} delete _charts[k]; });
 }
 
-// ─── PROJEÇÃO ────────────────────────────────────────────
+// ─── PROJEÇÃO SET 2026 – AGO 2027 ───────────────────────────
 function buildProjecao(ativas){
-  const hoje=new Date();
-  const MESES=["Ago 26","Set 26","Out 26","Nov 26","Dez 26","Jan 27","Fev 27","Mar 27","Abr 27","Mai 27","Jun 27","Jul 27"];
-  // Câmbios projetados (cenário moderado)
-  const USD=5.80, EUR=6.60;
-  // Custo mensal projetado por ferramenta
-  const proj=t=>{
+  // ── PREMISSAS (cenário moderado) ────────────────────────
+  const USD=5.80, EUR=6.60;           // câmbio médio projetado
+  const HUB_REAJUSTE=0.05;            // +5% renovação HubSpot mai/27
+  const PROV_NOVAS=3000;              // provisão novas ferramentas BRL/mês
+
+  const MESES=["Set 26","Out 26","Nov 26","Dez 26","Jan 27",
+               "Fev 27","Mar 27","Abr 27","Mai 27","Jun 27","Jul 27","Ago 27"];
+
+  // ── LÓGICA DE CUSTO MENSAL PROJETADO ────────────────────
+  const projMes=(t,mIdx)=>{
     const orig=parseFloat(t.custo_original)||0;
-    const cur=parseFloat(t.custo_brl_mes)||0;
-    if(!t.moeda||t.moeda==="?") return null; // custo desconhecido
-    if(t.moeda==="BRL"&&t.recorrencia==="Mensal") return cur;
-    if(t.moeda==="USD"&&t.recorrencia==="Mensal") return orig*USD;
-    if(t.moeda==="EUR"&&t.recorrencia==="Mensal") return orig*EUR;
-    if(t.moeda==="USD"&&t.recorrencia==="Anual") return orig*USD/12;
-    if(t.moeda==="EUR"&&t.recorrencia==="Anual") return orig*EUR/12;
-    return cur;
-  };
-  // HubSpot: aplica +5% de reajuste
-  const projHub=t=>{
     const base=parseFloat(t.custo_brl_mes)||0;
-    if(t.ferramenta&&t.ferramenta.toLowerCase().startsWith("hubspot")) return base*1.05;
-    return proj(t);
+    if(!t.moeda||t.moeda==="?") return null;
+    const n=t.ferramenta;
+    const isHub=n&&n.toLowerCase().startsWith("hubspot");
+    if(isHub){
+      // antes de mai/27 (mIdx<8) usa base; a partir de mai/27 aplica +5%
+      return mIdx<8 ? base : base*(1+HUB_REAJUSTE);
+    }
+    if(t.moeda==="BRL") return base;
+    if(t.moeda==="USD"&&t.recorrencia==="Mensal")  return orig*USD;
+    if(t.moeda==="EUR"&&t.recorrencia==="Mensal")  return orig*EUR;
+    if(t.moeda==="USD"&&t.recorrencia==="Anual")   return orig*USD/12;
+    if(t.moeda==="EUR"&&t.recorrencia==="Anual")   return orig*EUR/12;
+    return base;
   };
-  const totalAtual=ativas.reduce((s,t)=>s+(parseFloat(t.custo_brl_mes)||0),0);
-  const totalProj=ativas.reduce((s,t)=>{const v=projHub(t);return s+(v||0);},0)+3000; // +3k provisão
-  const totalAnual=(totalProj*12);
+
   const fB=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0});
   const fBd=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:2});
   const pct=v=>(v>=0?"+":"")+((v*100).toFixed(1))+"%";
-  const varPct=(totalProj-totalAtual)/totalAtual;
-  // desconhecidos
-  const desconhecidos=ativas.filter(t=>!t.moeda||t.moeda==="?");
-  // renovações críticas
-  const renovacoes=[
-    {f:"HubSpot (Comercial + CS + Marketing)",mes:"Mai 2027",tipo:"Renovação Anual",nota:"Negociar em bloco. Iniciar em Fev/27.",prioridade:"ALTA"},
-    {f:"Snov.io + Dripify",mes:"Out 2026",tipo:"Análise Sobreposição",nota:"Economia potencial ~R$494/mês por consolidação.",prioridade:"MÉDIA"},
-    {f:"Claude (RevOps + MKT) + Manus + Descript",mes:"Ago 2026",tipo:"Regularização Billing",nota:"Custo desconhecido — formalizar ou cancelar.",prioridade:"ALTA"},
-    {f:"SABI",mes:"Out 2026",tipo:"Avaliação de Permanência",nota:"Validar ROI e confirmar gestão COM PT.",prioridade:"MÉDIA"},
-    {f:"Figma Profissional",mes:"Set 2026",tipo:"Migração Billing",nota:"Mover de GROWNTLAB para GTGroup.",prioridade:"BAIXA"},
-  ];
-  const lacunas=[
-    {etapa:"Expansão & Advocacy",desc:"Sem ferramenta de upsell/expansão. Avaliar Gainsight, Vitally ou módulo CS HubSpot.",custo:"R$500–2.000/mês"},
-    {etapa:"Assinatura Eletrónica",desc:"DocuSign cancelada sem substituto. Avaliar ClickSign, DocuSign, Adobe Sign.",custo:"R$300–950/mês"},
-    {etapa:"Telefonia VoIP",desc:"API4COM cancelada sem substituto. Equipa comercial sem cobertura de voz.",custo:"R$500–1.500/mês"},
-  ];
-  const PC={ALTA:"#dc2626",MÉDIA:"#d97706",BAIXA:"#16a34a"};
-  const PB={ALTA:"#fef2f2",MÉDIA:"#fffbeb",BAIXA:"#f0fdf4"};
+
+  // ── TOTAIS ────────────────────────────────────────────────
+  const totalBase=ativas.reduce((s,t)=>s+(parseFloat(t.custo_brl_mes)||0),0);
+  // set/26 = mIdx 0
+  const totalSet=ativas.reduce((s,t)=>{const v=projMes(t,0);return s+(v||0);},0)+PROV_NOVAS;
+  const totalAnual=MESES.reduce((_,m,mi)=>_+ativas.reduce((s,t)=>{const v=projMes(t,mi);return s+(v||0);},0)+PROV_NOVAS,0);
+  const varPct=(totalSet-totalBase)/totalBase;
+
+  // ── RENDER ────────────────────────────────────────────────
   return`
   <!-- KPIs -->
-  <div class="g2" style="grid-template-columns:repeat(4,1fr);margin-bottom:12px">
-    ${[["Custo Atual/mês",fB(totalAtual),"base atual","#1A1F2E"],["Custo Projetado/mês",fB(totalProj),"cenário moderado","#E8461E"],["Variação Mensal",pct(varPct),"vs. base",varPct>0?"#dc2626":"#15803d"],["Total Ano Fiscal",fB(totalAnual),"Ago 26 – Jul 27","#1A1F2E"]].map(([l,v,sub,color])=>`
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
+    ${[
+      ["Base Atual/mês",fB(totalBase),"custo registado","var(--navy)"],
+      ["Projetado Set/26",fB(totalSet),"cenário moderado","#E8461E"],
+      ["Variação",pct(varPct),"vs. base atual",varPct>0.02?"#dc2626":"#15803d"],
+      ["Total Ano Fiscal",fB(totalAnual),"Set 26 – Ago 27","var(--navy)"]
+    ].map(([l,v,sub,col])=>`
     <div class="card" style="text-align:center;padding:16px 12px">
       <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${l}</div>
-      <div style="font-size:22px;font-weight:900;color:${color}">${v}</div>
+      <div style="font-size:22px;font-weight:900;color:${col}">${v}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:2px">${sub}</div>
     </div>`).join("")}
   </div>
 
   <!-- PREMISSAS -->
   <div class="card cp" style="margin-bottom:12px">
-    <div class="card-header" style="margin:-18px -20px 12px"><span class="card-title">Premissas do cenário moderado</span></div>
+    <div class="card-header" style="margin:-18px -20px 12px">
+      <span class="card-title">Premissas do cenário moderado</span>
+      <span style="font-size:11px;color:var(--muted)">Set 2026 – Ago 2027</span>
+    </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px">
-      ${[["USD/BRL projetado","5,80"],["EUR/BRL projetado","6,60"],["Reajuste HubSpot (renovação)","+5%"],["Provisão novas ferramentas","R$3.000/mês"],["Ciclo","Ago 2026 – Jul 2027"]].map(([k,v])=>`<div style="background:#F4F1EA;border-radius:7px;padding:7px 14px;font-size:12px"><span style="color:var(--muted);font-weight:600">${k}: </span><span style="font-weight:800;color:var(--navy)">${v}</span></div>`).join("")}
+      ${[["USD/BRL projetado","5,80"],["EUR/BRL projetado","6,60"],["Reajuste HubSpot (mai/27)","+5%"],
+         ["Provisão novas ferramentas","R$3.000/mês"],["Ciclo","Set 2026 – Ago 2027"]
+        ].map(([k,v])=>`<div style="background:#F4F1EA;border-radius:7px;padding:7px 14px;font-size:12px">
+          <span style="color:var(--muted);font-weight:600">${k}: </span>
+          <span style="font-weight:800;color:var(--navy)">${v}</span>
+        </div>`).join("")}
     </div>
   </div>
 
-  <!-- PROJEÇÃO MENSAL TABELA -->
+  <!-- TABELA PROJEÇÃO MENSAL -->
   <div class="card cp" style="margin-bottom:12px">
-    <div class="card-header" style="margin:-18px -20px 12px"><span class="card-title">Projeção mensal (Ago 2026 – Jul 2027)</span><span style="font-size:11px;color:var(--muted)">câmbio USD ${USD.toFixed(2)} · EUR ${EUR.toFixed(2)}</span></div>
-    <div class="tw" style="overflow-x:auto"><table>
-      <thead><tr><th>Ferramenta</th><th>Moeda</th><th>Atual/mês</th><th>Projetado/mês</th><th>Var %</th>${MESES.map(m=>`<th style="min-width:70px">${m}</th>`).join("")}</tr></thead>
-      <tbody>
-        ${ativas.sort((a,b)=>(parseFloat(b.custo_brl_mes)||0)-(parseFloat(a.custo_brl_mes)||0)).map((t,i)=>{
-          const cur=parseFloat(t.custo_brl_mes)||0;
-          const p=projHub(t);
-          const vp=cur>0&&p!==null?((p-cur)/cur):null;
-          const unknown=p===null;
-          return`<tr style="background:${i%2===0?"white":"#FDFCF8"}">
-            <td style="font-weight:700;white-space:nowrap">${t.ferramenta}</td>
-            <td style="text-align:center">${t.moeda||"?"}</td>
-            <td style="text-align:right;font-weight:700">${cur?fBd(cur):"—"}</td>
-            <td style="text-align:right;font-weight:800;color:${unknown?"#d97706":p>cur?"#dc2626":"#15803d"}">${unknown?"⚠ desconhecido":fBd(p)}</td>
-            <td style="text-align:center;font-size:11px;color:${vp===null?"#d97706":vp>0?"#dc2626":"#15803d"};font-weight:700">${vp===null?"—":pct(vp)}</td>
-            ${MESES.map(()=>`<td style="text-align:right;font-size:11px;color:${unknown?"#d97706":"inherit"}">${unknown?"?":fBd(p)}</td>`).join("")}
-          </tr>`;}).join("")}
-        <!-- Provisão -->
-        <tr style="background:#F3F0FF">
-          <td style="font-weight:700;color:#7c3aed">Provisão: novas ferramentas</td>
-          <td style="text-align:center">BRL</td>
-          <td style="text-align:right">—</td>
-          <td style="text-align:right;font-weight:800;color:#7c3aed">${fBd(3000)}</td>
-          <td style="text-align:center">—</td>
-          ${MESES.map(()=>`<td style="text-align:right;font-size:11px;color:#7c3aed">${fBd(3000)}</td>`).join("")}
-        </tr>
-        <!-- TOTAL -->
-        <tr style="background:var(--navy)">
-          <td style="font-weight:900;color:white" colspan="2">TOTAL</td>
-          <td style="text-align:right;font-weight:900;color:white">${fBd(totalAtual)}</td>
-          <td style="text-align:right;font-weight:900;color:#F15F38">${fBd(totalProj)}</td>
-          <td style="text-align:center;font-weight:800;color:${varPct>0?"#fca5a5":"#86efac"}">${pct(varPct)}</td>
-          ${MESES.map(()=>`<td style="text-align:right;font-weight:800;color:white">${fBd(totalProj)}</td>`).join("")}
-        </tr>
-      </tbody>
-    </table></div>
-    <div style="font-size:10px;color:var(--muted);margin-top:8px">⚠ Ferramentas com custo desconhecido (Claude×2, Manus, Descript) estão a zero — regularizar billing para precisão do modelo.</div>
-  </div>
-
-  <!-- RENOVAÇÕES & DECISÕES -->
-  <div class="card cp" style="margin-bottom:12px">
-    <div class="card-header" style="margin:-18px -20px 12px"><span class="card-title">Renovações e decisões críticas</span></div>
-    <div class="tw"><table>
-      <thead><tr><th>Ferramenta / Ação</th><th>Tipo</th><th>Mês</th><th>Prioridade</th><th>Nota</th></tr></thead>
-      <tbody>${renovacoes.map((rv,i)=>`<tr style="background:${PB[rv.prioridade]}">
-        <td style="font-weight:700">${rv.f}</td>
-        <td>${rv.tipo}</td>
-        <td style="font-weight:700;white-space:nowrap">${rv.mes}</td>
-        <td><span class="badge" style="color:${PC[rv.prioridade]};background:${PB[rv.prioridade]}">${rv.prioridade}</span></td>
-        <td style="font-size:11px;color:var(--muted)">${rv.nota}</td>
-      </tr>`).join("")}</tbody>
-    </table></div>
-  </div>
-
-  <!-- LACUNAS -->
-  <div class="card cp">
-    <div class="card-header" style="margin:-18px -20px 12px"><span class="card-title">Lacunas do stack (sem ferramenta dedicada)</span></div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      ${lacunas.map(l=>`<div style="display:flex;gap:12px;align-items:flex-start;background:#FFFBEB;border-radius:8px;padding:10px 14px;border:1px solid #FDE68A">
-        <span style="font-size:11px;font-weight:800;background:#F59E0B;color:white;padding:2px 8px;border-radius:4px;flex-shrink:0;margin-top:1px">${l.etapa}</span>
-        <div style="flex:1"><div style="font-size:12px;color:#1A1F2E">${l.desc}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">Custo estimado: ${l.custo}</div></div>
-      </div>`).join("")}
+    <div class="card-header" style="margin:-18px -20px 12px">
+      <span class="card-title">Projeção mensal — Set 2026 a Ago 2027</span>
+      <span style="font-size:11px;color:var(--muted)">câmbio USD ${USD.toFixed(2)} · EUR ${EUR.toFixed(2)} · HubSpot +${(HUB_REAJUSTE*100).toFixed(0)}% em mai/27</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:6px 8px;background:var(--navy);color:white;white-space:nowrap;position:sticky;left:0;z-index:2;min-width:160px">Ferramenta</th>
+            <th style="text-align:center;padding:6px 8px;background:var(--navy);color:white">Moeda</th>
+            <th style="text-align:right;padding:6px 8px;background:#374151;color:white;white-space:nowrap">Base/mês</th>
+            ${MESES.map((m,mi)=>`<th style="text-align:right;padding:6px 8px;background:${mi===8?"#7c2d12":mi===0?"#374151":"var(--navy)"};color:white;white-space:nowrap">${m}</th>`).join("")}
+            <th style="text-align:right;padding:6px 8px;background:#F15F38;color:white;white-space:nowrap">Total Ano</th>
+            <th style="text-align:center;padding:6px 8px;background:#F15F38;color:white">Var%</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${[...ativas].sort((a,b)=>(parseFloat(b.custo_brl_mes)||0)-(parseFloat(a.custo_brl_mes)||0)).map((t,ri)=>{
+            const base=parseFloat(t.custo_brl_mes)||0;
+            const unknown=!t.moeda||t.moeda==="?";
+            const bg=ri%2===0?"white":"#FDFCF8";
+            const projs=MESES.map((_,mi)=>projMes(t,mi));
+            const totalT=projs.reduce((s,v)=>s+(v||0),0);
+            const varT=base>0&&projs[0]!=null?((projs[0]-base)/base):null;
+            return`<tr style="background:${bg}">
+              <td style="padding:5px 8px;font-weight:700;white-space:nowrap;position:sticky;left:0;background:${bg};z-index:1">${t.ferramenta}</td>
+              <td style="padding:5px 8px;text-align:center;color:var(--muted)">${t.moeda||"?"}</td>
+              <td style="padding:5px 8px;text-align:right;font-weight:600;color:var(--muted)">${base?fBd(base):"—"}</td>
+              ${projs.map((v,mi)=>`<td style="padding:5px 8px;text-align:right;color:${unknown?"#d97706":v&&v>base*1.01?"#dc2626":v&&v<base*0.99?"#15803d":"inherit"};font-weight:${mi===8?"700":"400"}">${unknown?"⚠":v!=null?fBd(v):"—"}</td>`).join("")}
+              <td style="padding:5px 8px;text-align:right;font-weight:800">${unknown?"—":fBd(totalT)}</td>
+              <td style="padding:5px 8px;text-align:center;font-size:10px;color:${varT===null?"#d97706":varT>0.01?"#dc2626":varT<-0.01?"#15803d":"var(--muted)"};font-weight:700">${varT===null?"?":pct(varT)}</td>
+            </tr>`;}).join("")}
+          <!-- Provisão -->
+          <tr style="background:#EDE9FE">
+            <td style="padding:5px 8px;font-weight:700;color:#7c3aed;position:sticky;left:0;background:#EDE9FE;z-index:1">Provisão: novas ferramentas</td>
+            <td style="padding:5px 8px;text-align:center;color:var(--muted)">BRL</td>
+            <td style="padding:5px 8px;text-align:right;color:var(--muted)">—</td>
+            ${MESES.map(()=>`<td style="padding:5px 8px;text-align:right;font-weight:600;color:#7c3aed">${fBd(PROV_NOVAS)}</td>`).join("")}
+            <td style="padding:5px 8px;text-align:right;font-weight:800;color:#7c3aed">${fBd(PROV_NOVAS*12)}</td>
+            <td style="padding:5px 8px;text-align:center;color:var(--muted)">—</td>
+          </tr>
+          <!-- TOTAL -->
+          <tr style="background:var(--navy)">
+            <td style="padding:6px 8px;font-weight:900;color:white;position:sticky;left:0;background:var(--navy);z-index:1">TOTAL</td>
+            <td style="padding:6px 8px;color:white"></td>
+            <td style="padding:6px 8px;text-align:right;font-weight:900;color:#94a3b8">${fBd(totalBase)}</td>
+            ${MESES.map((_,mi)=>{const tot=ativas.reduce((s,t)=>{const v=projMes(t,mi);return s+(v||0);},0)+PROV_NOVAS;return`<td style="padding:6px 8px;text-align:right;font-weight:800;color:${mi===8?"#fca5a5":"white"}">${fBd(tot)}</td>`;}).join("")}
+            <td style="padding:6px 8px;text-align:right;font-weight:900;color:#fbbf24">${fBd(totalAnual)}</td>
+            <td style="padding:6px 8px;text-align:center;font-weight:800;color:${varPct>0.02?"#fca5a5":"#86efac"}">${pct(varPct)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:8px;display:flex;gap:16px;flex-wrap:wrap">
+      <span>🟠 Coluna mai/27 a vermelho escuro = renovação HubSpot com +5%</span>
+      <span>⚠ Ferramentas com "?" têm custo desconhecido (billing GROWNTLAB) — regularizar para precisão do modelo</span>
     </div>
   </div>`;
 }
+// ─── FIM PROJEÇÃO ─────────────────────────────────────────
 // ─── FIM PROJEÇÃO ─────────────────────────────────────────
 function buildGestao(ativas,total){
   const hoje=new Date();
