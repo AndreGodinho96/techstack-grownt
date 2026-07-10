@@ -448,6 +448,33 @@ function toast(msg,err=false){
 
 // ── Chart instances ────────────────────────────────────────────────────────
 
+/* Projeção de orçamento Set/2026 → Ago/2027 (12 meses) a partir das ferramentas ativas */
+function calcProjecao(){
+  const start={y:2026,m:8}; // Setembro/2026 (0-based)
+  const months=[];
+  for(let i=0;i<12;i++){const mm=(start.m+i)%12;const yy=start.y+Math.floor((start.m+i)/12);months.push({y:yy,m:mm});}
+  const incl=getAtivas().filter(t=>parseFloat(t.custo_brl_mes)>0);
+  const runRate=incl.reduce((s,t)=>s+parseFloat(t.custo_brl_mes),0);
+  const caixa=months.map(()=>0);
+  const renovacoes=[];const amortizadas=[];
+  incl.forEach(t=>{
+    const v=parseFloat(t.custo_brl_mes);
+    const isAnual=(t.recorrencia||"").toLowerCase()==="anual";
+    if(isAnual&&t.prox_renovacao){
+      const d=new Date(t.prox_renovacao+"T12:00:00");
+      if(!isNaN(d.getTime())){
+        const idx=months.findIndex(x=>x.m===d.getMonth());
+        if(idx>=0){caixa[idx]+=v*12;renovacoes.push({nome:t.ferramenta,idx,valor:v*12});return;}
+      }
+    }
+    for(let i=0;i<12;i++)caixa[i]+=v;
+    if(isAnual)amortizadas.push(t.ferramenta);
+  });
+  const semCusto=getAtivas().filter(t=>!(parseFloat(t.custo_brl_mes)>0)).map(t=>t.ferramenta);
+  return {months,caixa,runRate,total:runRate*12,renovacoes,amortizadas,semCusto,nIncl:incl.length};
+}
+window._projMesLabel=x=>["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"][x.m]+"/"+String(x.y).slice(2);
+
 function destroyCharts() {
   Object.keys(_charts).forEach(k => { try { _charts[k].destroy(); } catch(e) {} delete _charts[k]; });
 }
@@ -665,6 +692,36 @@ function buildChartsIfNeeded() {
         scales: {
           x: { grid: { color: gridColor }, ticks: { color:"#888", font:{size:11} } },
           y: { grid: { color: gridColor }, ticks: { color:"#888", font:{size:11}, callback: v => "R$"+Math.round(v/1000)+"k" }, beginAtZero: false }
+        }
+      }
+    });
+  }
+
+  // BAR+LINE — projeção de orçamento Set/2026 a Ago/2027
+  const projCanvas = document.getElementById("chart-projecao");
+  if (projCanvas && !_charts["chart-projecao"]) {
+    const P = calcProjecao();
+    _charts["chart-projecao"] = new Chart(projCanvas, {
+      type: "bar",
+      data: {
+        labels: P.months.map(window._projMesLabel),
+        datasets: [
+          { type: "bar", label: "Desembolso estimado (caixa)", data: P.caixa,
+            backgroundColor: P.caixa.map(v => v > P.runRate*1.15 ? "#E8461E" : "#1A1F2E"),
+            borderRadius: 6, maxBarThickness: 36 },
+          { type: "line", label: "Run-rate mensal", data: P.months.map(() => P.runRate),
+            borderColor: "#E8461E", borderDash: [6,4], borderWidth: 2, pointRadius: 0, fill: false }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: "bottom", labels: { color: "#555", font: { size: 11 }, boxWidth: 12, padding: 12 } },
+          tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: R$ ${Number(ctx.raw).toLocaleString("pt-BR",{maximumFractionDigits:0})}` } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: "#888", font: { size: 11 } } },
+          y: { grid: { color: gridColor }, ticks: { color: "#888", font: { size: 11 }, callback: v => "R$"+Math.round(v/1000)+"k" }, beginAtZero: true }
         }
       }
     });
@@ -927,6 +984,8 @@ function buildRiscos(ro){
   `;}
 
 function buildCustos(ativas,total){
+  const PJ=calcProjecao();
+  const PJAC=[];PJ.caixa.reduce((s,v)=>{const n=s+v;PJAC.push(n);return n;},0);
   const depts=getDepts();
   const dc=depts.map(d=>({d,c:ativas.filter(t=>t.departamento===d).reduce((s,t)=>s+(parseFloat(t.custo_brl_mes)||0),0)})).filter(x=>x.c>0).sort((a,b)=>b.c-a.c);
   const mx=dc[0]?.c||1;
@@ -963,6 +1022,54 @@ function buildCustos(ativas,total){
       <span style="font-size:11px;color:var(--muted);font-weight:600">snapshots + mês atual · picos = novas ferramentas · quedas = cancelamentos</span>
     </div>
     <div class="chart-wrap tall"><canvas id="line-chart"></canvas></div>
+  </div>
+
+  <!-- PROJEÇÃO DE ORÇAMENTO -->
+  <div class="card cp" style="margin-bottom:12px">
+    <div class="card-header" style="margin:-18px -20px 14px">
+      <span class="card-title">Projeção de orçamento — Set/2026 a Ago/2027</span><button class="maximize-btn" onclick="window._maximizeChart('chart-projecao','Projeção de Orçamento — Set/2026 a Ago/2027')">⛶ Expandir</button>
+      <span style="font-size:11px;color:var(--muted);font-weight:600">barras = desembolso estimado (caixa) · linha = run-rate mensal</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+      <div style="background:var(--navy);border-radius:8px;padding:12px 14px;border-top:3px solid var(--orange)">
+        <div style="font-size:10px;color:rgba(255,255,255,.4);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Orçamento 12 meses</div>
+        <div style="font-size:20px;font-weight:900;color:white">${fBRL(PJ.total)}</div>
+      </div>
+      <div style="background:#F7F5EF;border-radius:8px;padding:12px 14px">
+        <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Média mensal (run-rate)</div>
+        <div style="font-size:20px;font-weight:900;color:var(--navy)">${fBRL(PJ.runRate)}</div>
+      </div>
+      <div style="background:#F7F5EF;border-radius:8px;padding:12px 14px">
+        <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Ferramentas incluídas</div>
+        <div style="font-size:20px;font-weight:900;color:var(--navy)">${PJ.nIncl}</div>
+      </div>
+      <div style="background:#F7F5EF;border-radius:8px;padding:12px 14px">
+        <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Ativas sem custo registado</div>
+        <div style="font-size:20px;font-weight:900;color:${PJ.semCusto.length?"#d97706":"var(--navy)"}">${PJ.semCusto.length}</div>
+      </div>
+    </div>
+    <div class="chart-wrap tall"><canvas id="chart-projecao"></canvas></div>
+    <div class="tw" style="margin-top:14px"><table>
+      <thead><tr><th>Mês</th><th>Desembolso estimado</th><th>Run-rate</th><th>Acumulado</th></tr></thead>
+      <tbody>${PJ.months.map((x,i)=>`<tr style="background:${i%2===0?"white":"#FDFCF8"}">
+        <td style="font-weight:800;white-space:nowrap;text-transform:capitalize">${window._projMesLabel(x)}</td>
+        <td style="font-weight:700;color:${PJ.caixa[i]>PJ.runRate*1.15?"var(--orange)":"var(--navy)"}">${fBRL(PJ.caixa[i])}</td>
+        <td style="color:var(--muted);font-weight:600">${fBRL(PJ.runRate)}</td>
+        <td style="font-weight:800">${fBRL(PJAC[i])}</td>
+      </tr>`).join("")}</tbody>
+      <tfoot><tr style="border-top:2px solid var(--navy)">
+        <td style="font-weight:900">Total</td>
+        <td style="font-weight:900">${fBRL(PJ.caixa.reduce((s,v)=>s+v,0))}</td>
+        <td style="font-weight:900;color:var(--muted)">${fBRL(PJ.total)}</td>
+        <td style="font-weight:900">${fBRL(PJAC[11]||0)}</td>
+      </tr></tfoot>
+    </table></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6">
+      <strong>Metodologia:</strong> valores em BRL ao custo atual (custo_brl_mes) das ${PJ.nIncl} ferramentas ativas com custo registado, sem inflação nem variação cambial. Ferramentas anuais com data de renovação registada entram como desembolso único no mês da renovação; anuais sem data e mensais são distribuídas uniformemente.
+      ${PJ.renovacoes.length?`<br><strong>Renovações anuais no período:</strong> ${PJ.renovacoes.map(r=>`${r.nome} (${window._projMesLabel(PJ.months[r.idx])} · ${fBRL(r.valor)})`).join(" · ")}`:""}
+      ${PJ.amortizadas.length?`<br><strong>⚠ Anuais amortizadas por falta de data de renovação:</strong> ${PJ.amortizadas.join(", ")} — preencher <em>prox_renovacao</em> torna a projeção de caixa mais precisa.`:""}
+      ${PJ.semCusto.length?`<br><strong>⚠ Excluídas (ativas sem custo registado):</strong> ${PJ.semCusto.join(", ")}.`:""}
+    </div>
   </div>
 
   <!-- LINHA 3: barras depto + todas as ferramentas -->
