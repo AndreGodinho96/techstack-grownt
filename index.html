@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
 :root{--orange:#E8461E;--navy:#1A1F2E;--sand:#E8E4D9;--sand-lt:#F4F1EA;--green:#16a34a;--ink:#111318;--muted:#6B7280;--border:#E5E2D8;--red:#DC2626;--amber:#D97706}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -970,6 +971,7 @@ function buildHTML(){
       </div>`:''}
       ${S.cambio&&S.cambio.error?`<span style="font-size:10px;color:rgba(255,100,100,.5)">câmbio indisponível</span>`:''}
       ${S.lastRefresh?`<span style="font-size:10px;color:rgba(255,255,255,.3);font-weight:600;letter-spacing:.04em;text-transform:uppercase">${S.lastRefresh.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span>`:""}
+        <button class="btn-refresh" id="btn-screenshot" title="Exportar screenshot exato da tela atual">📷 Screenshot</button>
         <button class="btn-refresh" id="btn-refresh">↻</button>
         <span class="user-pill">🔒 ${userEmail}</span>
         <button class="btn-logout" id="btn-logout">Sair</button>
@@ -1394,6 +1396,7 @@ function buildModal(){
 }
 
 function attachEvents(){
+  document.getElementById("btn-screenshot")?.addEventListener("click",window._exportScreenshot);
   document.getElementById("btn-refresh")?.addEventListener("click",loadData);
   document.querySelectorAll(".th-sort").forEach(th=>th.addEventListener("click",()=>{
     const k=th.dataset.sortkey;
@@ -1457,6 +1460,32 @@ function attachEvents(){
   });
 }
 function closeModal(){S.editTool=null;render();}
+
+window._exportScreenshot=async function(){
+  const btn=document.getElementById("btn-screenshot");
+  const old=btn?btn.textContent:"";
+  if(typeof html2canvas==="undefined"){toast("A carregar biblioteca de captura…");
+    try{await new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
+    catch(e){toast("Não foi possível carregar a captura de ecrã",true);return;}
+  }
+  if(btn){btn.disabled=true;btn.textContent="A capturar…";}
+  try{
+    const root=document.getElementById("root");
+    const canvas=await html2canvas(root,{backgroundColor:"#E8E4D9",scale:2,useCORS:true,logging:false});
+    const tabLabel=S.tab||"stack";
+    const stamp=new Date().toISOString().slice(0,16).replace("T","_").replace(":","-");
+    const url=canvas.toDataURL("image/png");
+    const a=document.createElement("a");
+    a.href=url;a.download="techstack_"+tabLabel+"_"+stamp+".png";
+    document.body.appendChild(a);a.click();a.remove();
+    toast("Screenshot exportado");
+  }catch(e){
+    console.error("exportScreenshot:",e);
+    toast("Erro ao gerar o screenshot",true);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=old;}
+  }
+};
 
 initAuth();
 </script>
