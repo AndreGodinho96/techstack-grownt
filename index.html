@@ -711,12 +711,6 @@ function buildGestao(ativas,total){
       </div>
     </details>
   </div>
-  <div class="g2" style="margin-bottom:12px;grid-template-columns:1fr 1fr 1fr 1fr">
-    <div class="metric" style="border-top:3px solid var(--orange)"><div class="mlabel">Custo anual projetado</div><div class="mval" style="font-size:18px">${fB(projecaoAnual)}</div><div class="msub">${tendencia>0?"+":""}${tendencia}% vs. ${snaps.length?"snapshot "+new Date(snaps[0].mes_referencia+"T12:00:00").toLocaleDateString("pt-BR",{month:"short",year:"2-digit"}):"início"}</div></div>
-    <div class="metric" style="border-top:3px solid ${renovacoes.length>0?"#d97706":"#16a34a"}"><div class="mlabel">Renovações (90 dias)</div><div class="mval">${renovacoes.length}</div><div class="msub">${fB(totalRenovacoes)} em risco</div></div>
-    <div class="metric" style="border-top:3px solid #dc2626"><div class="mlabel">Lock-in crítico</div><div class="mval">${semaforo.filter(t=>t._nivel==="red").length}</div><div class="msub">missão crítica s/ substituto</div></div>
-    <div class="metric" style="border-top:3px solid #7c3aed"><div class="mlabel">Sobreposições</div><div class="mval">${cobertura.filter(c=>c.overlap).length}</div><div class="msub">categorias com 3+ ferramentas</div></div>
-  </div>
   <div class="g2" style="margin-bottom:12px">
     <div class="card cp">
       <div class="card-header" style="margin:-18px -20px 14px"><span class="card-title">Renovações próximas (90 dias)</span><span style="font-size:11px;color:${renovacoes.length>0?"#d97706":"#16a34a"};font-weight:700">${renovacoes.length} · ${fB(totalRenovacoes)}</span></div>
@@ -978,12 +972,12 @@ function buildHTML(){
     </div>
   </div>
   <div class="content">
-    <div class="metrics">
+    ${S.tab!=="gestao"?`<div class="metrics">
       <div class="metric"><div class="mlabel">Custo ativas / mês</div><div class="mval">${fBRL(total)}</div><div class="msub">${ativas.length} ferramentas ativas</div></div>
       <div class="metric red"><div class="mlabel">Riscos abertos</div><div class="mval">${ro.length}</div><div class="msub">${alta} de alta prioridade</div></div>
       <div class="metric amber"><div class="mlabel">Sem responsável</div><div class="mval">${semDono}</div><div class="msub">ferramentas ativas / Growntlab</div></div>
       <div class="metric green"><div class="mlabel">Canceladas Jun/26</div><div class="mval">${canc}</div><div class="msub">economia registrada</div></div>
-    </div>
+    </div>`:""}
     ${S.tab==="stack"?buildStack():""}
     ${S.tab==="riscos"?buildRiscos(ro):""}
     ${S.tab==="custos"?buildCustos(ativas,total):""}
