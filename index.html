@@ -394,7 +394,7 @@ const SBC={1:"#fee2e2",2:"#fef3c7",3:"#fff7ed",4:"#dcfce7",5:"#dbeafe"};
 const SCC={1:"#991b1b",2:"#92400e",3:"#9a3412",4:"#166534",5:"#1e40af"};
 
 const _charts={};
-const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,cambio:null,editForm:{},loading:true,saving:false,lastRefresh:null,custoGran:"mensal",histGran:"mensal",gFiltros:{status:{mode:"in",vals:["ATIVA"]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},mercado:{mode:"in",vals:[]},critica:"all"},sFiltros:{status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}},rFiltros:{prioridade:{mode:"in",vals:[]},tipo:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}},openFilter:null};
+const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,cambio:null,editForm:{},loading:true,saving:false,lastRefresh:null,custoGran:"mensal",histGran:"mensal",gFiltros:{status:{mode:"in",vals:["ATIVA"]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},mercado:{mode:"in",vals:[]},critica:"all"},sFiltros:{status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}},sSort:{key:null,dir:1},rFiltros:{prioridade:{mode:"in",vals:[]},tipo:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}},openFilter:null};
 
 async function sbFetch(path,opts={}){
   const {data:{session}} = await sb.auth.getSession();
@@ -435,12 +435,28 @@ function gfDrop(scope,dim,label,values,labelFn){const obj={g:S.gFiltros,s:S.sFil
       <div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid #F0EDE4"><button class="gf-clear" data-scope="${scope}" data-gf="${dim}" style="border:none;background:none;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Limpar</button><button class="gf-close" style="border:none;background:var(--navy);color:white;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;border-radius:5px;padding:4px 12px">Aplicar</button></div>
     </div>`:""}
   </div>`;}
-const getFiltered=()=>S.tools.filter(t=>{
-  if(!pf(S.sFiltros.status,t.status))return false;
-  if(!pf(S.sFiltros.dept,t.departamento))return false;
-  if(S.search){const q=S.search.toLowerCase();if(!t.ferramenta.toLowerCase().includes(q)&&!(t.departamento||"").toLowerCase().includes(q)&&!(t.categoria_funcional||"").toLowerCase().includes(q))return false;}
-  return true;
-});
+const SORT_NUM=new Set(["custo_brl_mes","custo_usuario_brl","usuarios_qtd","score_utilizacao"]);
+const getFiltered=()=>{
+  const arr=S.tools.filter(t=>{
+    if(!pf(S.sFiltros.status,t.status))return false;
+    if(!pf(S.sFiltros.dept,t.departamento))return false;
+    if(S.search){const q=S.search.toLowerCase();if(!t.ferramenta.toLowerCase().includes(q)&&!(t.departamento||"").toLowerCase().includes(q)&&!(t.categoria_funcional||"").toLowerCase().includes(q))return false;}
+    return true;
+  });
+  const k=S.sSort.key;
+  if(k){
+    const dir=S.sSort.dir;
+    arr.sort((a,b)=>{
+      let x=a[k],y=b[k];
+      const ex=x===null||x===undefined||x==="";
+      const ey=y===null||y===undefined||y==="";
+      if(ex&&ey)return 0; if(ex)return 1; if(ey)return -1; // vazios sempre no fim
+      if(SORT_NUM.has(k)){ x=parseFloat(x)||0; y=parseFloat(y)||0; return (x-y)*dir; }
+      return String(x).localeCompare(String(y),"pt-BR",{numeric:true,sensitivity:"base"})*dir;
+    });
+  }
+  return arr;
+};
 
 function toast(msg,err=false){
   const el=document.createElement("div");el.className="toast"+(err?" error":"");el.innerHTML=(err?"✕":"✓")+" "+msg;
@@ -965,7 +981,7 @@ function buildStack(){
   <div class="card fade">
     <div class="card-header"><span class="card-title">Ferramentas do stack</span><span style="font-size:11px;color:var(--muted);font-weight:700">${f.filter(t=>t.status==="ATIVA").length} ativas · ${f.filter(t=>t.status==="GROWNTLAB").length} Growntlab</span></div>
     <div class="tw"><table>
-      <thead><tr><th>Ferramenta</th><th>Status</th><th>Depto</th><th>Centro Custo</th><th>Categoria</th><th>BRL/mês</th><th>Recorrência</th><th>Users</th><th>BRL/user</th><th>Responsável</th><th>Score</th><th>NPS</th><th>Alertas</th><th></th></tr></thead>
+      <thead><tr><th class="th-sort" data-sortkey="ferramenta" style="cursor:pointer;user-select:none;white-space:nowrap">Ferramenta<span class="sort-ind" data-for="ferramenta">${S.sSort.key==="ferramenta"?(S.sSort.dir===1?" ▲":" ▼"):"<span style=\"color:#d5d2c6\">↕</span>"}</span></th><th class="th-sort" data-sortkey="status" style="cursor:pointer;user-select:none;white-space:nowrap">Status<span class="sort-ind" data-for="status">${S.sSort.key==="status"?(S.sSort.dir===1?" ▲":" ▼"):"<span style=\"color:#d5d2c6\">↕</span>"}</span></th><th class="th-sort" data-sortkey="departamento" style="cursor:pointer;user-select:none;white-space:nowrap">Depto<span class="sort-ind" data-for="departamento">${S.sSort.key==="departamento"?(S.sSort.dir===1?" ▲":" ▼"):"<span style=\"color:#d5d2c6\">↕</span>"}</span></th><th class="th-sort" data-sortkey="centro_de_custo" style="cursor:pointer;user-select:none;white-space:nowrap">Centro Custo<span class="sort-ind" data-for="centro_de_custo">${S.sSort.key==="centro_de_custo"?(S.sSort.dir===1?" ▲":" ▼"):"<span style=\"color:#d5d2c6\">↕</span>"}</span></th><th class="th-sort" data-sortkey="categoria_funcional" style="cursor:pointer;user-select:none;white-space:nowrap">Categoria<span class="sort-ind" data-for="categoria_funcional">${S.sSort.key==="categoria_funcional"?(S.sSort.dir===1?" ▲":" ▼"):"<span style=\"color:#d5d2c6\">↕</span>"}</span></th><th class="th-sort" data-sortkey="custo_brl_mes" style="cursor:pointer;user-select:none;white-space:nowrap">BRL/mês<span class="sort-ind" data-for="custo_brl_mes">${S.sSort.key==="custo_brl_mes"?(S.sSort.dir===1?" ▲":" ▼"):"<span style=\"color:#d5d2c6\">↕</span>"}</span></th><th class="th-sort" data-sortkey="recorrencia" style="cursor:pointer;user-select:none;white-space:nowrap">Recorrência<span class="sort-ind" data-for="recorrencia">${S.sSort.key==="recorrencia"?(S.sSort.dir===1?" ▲":" ▼"):"<span style=\"color:#d5d2c6\">↕</span>"}</span></th><th class="th-sort" data-sortkey="usuarios_qtd" style="cursor:pointer;user-select:none;white-space:nowrap">Users<span class="sort-ind" data-for="usuarios_qtd">${S.sSort.key==="usuarios_qtd"?(S.sSort.dir===1?" ▲":" ▼"):"<span style=\"color:#d5d2c6\">↕</span>"}</span></th><th class="th-sort" data-sortkey="custo_usuario_brl" style="cursor:pointer;user-select:none;white-space:nowrap">BRL/user<span class="sort-ind" data-for="custo_usuario_brl">${S.sSort.key==="custo_usuario_brl"?(S.sSort.dir===1?" ▲":" ▼"):"<span style=\"color:#d5d2c6\">↕</span>"}</span></th><th class="th-sort" data-sortkey="responsavel" style="cursor:pointer;user-select:none;white-space:nowrap">Responsável<span class="sort-ind" data-for="responsavel">${S.sSort.key==="responsavel"?(S.sSort.dir===1?" ▲":" ▼"):"<span style=\"color:#d5d2c6\">↕</span>"}</span></th><th class="th-sort" data-sortkey="score_utilizacao" style="cursor:pointer;user-select:none;white-space:nowrap">Score<span class="sort-ind" data-for="score_utilizacao">${S.sSort.key==="score_utilizacao"?(S.sSort.dir===1?" ▲":" ▼"):"<span style=\"color:#d5d2c6\">↕</span>"}</span></th><th class="th-sort" data-sortkey="nps_interno" style="cursor:pointer;user-select:none;white-space:nowrap">NPS<span class="sort-ind" data-for="nps_interno">${S.sSort.key==="nps_interno"?(S.sSort.dir===1?" ▲":" ▼"):"<span style=\"color:#d5d2c6\">↕</span>"}</span></th><th>Alertas</th><th></th></tr></thead>
       <tbody>${f.map((t,i)=>{
         const sm=SM[t.status]||{l:t.status,c:"#888",b:"#f3f4f6"};
         const alert=t.alertas||t.risco_obs||"";const isRed=alert.includes("🚨");
@@ -1342,6 +1358,11 @@ function buildModal(){
 
 function attachEvents(){
   document.getElementById("btn-refresh")?.addEventListener("click",loadData);
+  document.querySelectorAll(".th-sort").forEach(th=>th.addEventListener("click",()=>{
+    const k=th.dataset.sortkey;
+    if(S.sSort.key===k){ S.sSort.dir=-S.sSort.dir; } else { S.sSort.key=k; S.sSort.dir=1; }
+    render();
+  }));
   document.getElementById("fx-apply")?.addEventListener("click",window._applyFx);
   document.getElementById("fx-reset")?.addEventListener("click",window._resetFx);
   ["fx-usd","fx-eur"].forEach(id=>document.getElementById(id)?.addEventListener("keydown",e=>{if(e.key==="Enter")window._applyFx();}));
