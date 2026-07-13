@@ -591,9 +591,10 @@ function buildProjecao(ativas){
 
   <!-- TABELA PROJEÇÃO -->
   <div class="card cp" style="margin-bottom:12px">
-    <div class="card-header" style="margin:-18px -20px 12px">
+    <div class="card-header" style="margin:-18px -20px 12px;flex-wrap:wrap;gap:8px">
       <span class="card-title">Projeção ${PROJGRAN_L[S.projGran].toLowerCase()} por ferramenta — Set 2026 a Ago 2027</span>
       <span style="font-size:11px;color:var(--muted)">câmbio USD ${USD.toFixed(2).replace(".",",")} · EUR ${EUR.toFixed(2).replace(".",",")} · valores contratados, sem reajuste</span>
+      <button id="btn-export-proj" style="margin-left:auto;border:none;background:var(--orange);color:white;border-radius:6px;padding:6px 14px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer">⬇ Exportar planilha</button>
     </div>
     <div style="overflow-x:auto">
       ${(()=>{const TB=PROJ_BUCKETS[S.projGran]||PROJ_BUCKETS.mensal;return`
@@ -1404,6 +1405,7 @@ function buildModal(){
 function attachEvents(){
   document.getElementById("btn-export")?.addEventListener("click",window._exportSnapshot);
   document.getElementById("btn-snapshot")?.addEventListener("click",window._criarSnapshot);
+  document.getElementById("btn-export-proj")?.addEventListener("click",window._exportProjecaoXLSX);
   document.getElementById("btn-screenshot")?.addEventListener("click",window._exportScreenshot);
   document.getElementById("btn-refresh")?.addEventListener("click",loadData);
   document.querySelectorAll(".th-sort").forEach(th=>th.addEventListener("click",()=>{
@@ -1712,6 +1714,66 @@ window._criarSnapshot = async function(){
   }catch(e){
     console.error("criarSnapshot:",e);
     toast("Erro ao gravar snapshot",true);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=old;}
+  }
+};
+
+window._exportProjecaoXLSX = async function(){
+  const btn = document.getElementById("btn-export-proj");
+  const old = btn?btn.textContent:"";
+  if(btn){btn.disabled=true;btn.textContent="A gerar…";}
+  try{
+    if(typeof XLSX==="undefined"){
+      await new Promise((res,rej)=>{
+        const s=document.createElement("script");
+        s.src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+        s.onload=res;s.onerror=rej;document.head.appendChild(s);
+      });
+    }
+    const ativas = getAtivas();
+    const TB = PROJ_BUCKETS[S.projGran] || PROJ_BUCKETS.mensal;
+    const totalBase = ativas.reduce((s,t)=>s+(parseFloat(t.custo_brl_mes)||0),0);
+    const rows = [];
+    rows.push(["Ferramenta","Moeda","Base/mês (BRL)",...TB.map(b=>b.label),"Total Ano (BRL)","Var% vs Set/26"]);
+    const sorted = [...ativas].sort((a,b)=>(parseFloat(b.custo_brl_mes)||0)-(parseFloat(a.custo_brl_mes)||0));
+    sorted.forEach(t=>{
+      const base = parseFloat(t.custo_brl_mes)||0;
+      const unknown = !t.moeda || t.moeda==="?";
+      const projsM = PROJ_P.MESES.map((_,mi)=>projMesTool(t,mi));
+      const projs = TB.map(b=>{const vs=b.idx.map(i=>projsM[i]);return vs.some(v=>v==null)?null:vs.reduce((s,v)=>s+v,0);});
+      const totalT = projsM.reduce((s,v)=>s+(v||0),0);
+      const projSet = projMesTool(t,0);
+      const varT = base>0&&projSet!=null?((projSet-base)/base*100):null;
+      rows.push([
+        t.ferramenta, t.moeda||"?", Number(base.toFixed(2)),
+        ...projs.map(v=>unknown?"?":(v!=null?Number(v.toFixed(2)):null)),
+        unknown?"?":Number(totalT.toFixed(2)),
+        varT!=null?Number(varT.toFixed(1)):null
+      ]);
+    });
+    const totalRow = ["TOTAL","","" + Number(totalBase.toFixed(2))];
+    let totalAnualSum = 0;
+    TB.forEach(b=>{
+      const tot = b.idx.reduce((s,mi)=>s+ativas.reduce((s2,t)=>{const v=projMesTool(t,mi);return s2+(v||0);},0),0);
+      totalRow.push(Number(tot.toFixed(2)));
+    });
+    PROJ_P.MESES.forEach((_,mi)=>{ totalAnualSum += ativas.reduce((s,t)=>{const v=projMesTool(t,mi);return s+(v||0);},0); });
+    totalRow.push(Number(totalAnualSum.toFixed(2)));
+    const varPctTotal = totalBase>0 ? (((ativas.reduce((s,t)=>{const v=projMesTool(t,0);return s+(v||0);},0)-totalBase)/totalBase)*100) : 0;
+    totalRow.push(Number(varPctTotal.toFixed(1)));
+    rows.push(totalRow);
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [{wch:28},{wch:8},{wch:14},...TB.map(()=>({wch:14})),{wch:16},{wch:12}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Projeção " + PROJGRAN_L[S.projGran]);
+    const hoje = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, "projecao_" + S.projGran + "_set26_ago27_" + hoje + ".xlsx");
+    toast("Planilha exportada");
+  }catch(e){
+    console.error("exportProjecaoXLSX:", e);
+    toast("Erro ao gerar a planilha", true);
   }finally{
     if(btn){btn.disabled=false;btn.textContent=old;}
   }
