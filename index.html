@@ -394,7 +394,7 @@ const SBC={1:"#fee2e2",2:"#fef3c7",3:"#fff7ed",4:"#dcfce7",5:"#dbeafe"};
 const SCC={1:"#991b1b",2:"#92400e",3:"#9a3412",4:"#166534",5:"#1e40af"};
 
 const _charts={};
-const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,cambio:null,editForm:{},loading:true,saving:false,lastRefresh:null,custoGran:"mensal",histGran:"mensal",gFiltros:{status:{mode:"in",vals:["ATIVA"]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},mercado:{mode:"in",vals:[]},critica:"all"},sFiltros:{status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}},sSort:{key:null,dir:1},rFiltros:{prioridade:{mode:"in",vals:[]},tipo:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}},openFilter:null};
+const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,cambio:null,editForm:{},loading:true,saving:false,lastRefresh:null,custoGran:"mensal",histGran:"mensal",gFiltros:{status:{mode:"in",vals:["ATIVA"]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},mercado:{mode:"in",vals:[]},critica:"all"},sFiltros:{status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]}},sSort:{key:null,dir:1},rFiltros:{prioridade:{mode:"in",vals:[]},tipo:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}},openFilter:null};
 
 async function sbFetch(path,opts={}){
   const {data:{session}} = await sb.auth.getSession();
@@ -425,6 +425,7 @@ const fDate=d=>d?new Date(d+"T12:00:00").toLocaleDateString("pt-BR"):"—";
 const getAtivas=()=>S.tools.filter(t=>t.status==="ATIVA");
 const getRO=()=>S.risks.filter(r=>r.status_acao!=="Concluído");
 const getDepts=()=>[...new Set(S.tools.map(t=>t.departamento).filter(Boolean))].sort();
+const getCentros=()=>[...new Set(S.tools.map(t=>t.centro_de_custo).filter(Boolean))].sort();
 const getStatuses=()=>[...new Set(S.tools.map(t=>t.status))];
 function pf(f,v){if(!f||!f.vals||!f.vals.length)return true;return f.vals.includes(v);}
 function gfSummary(f,labelFn){if(!f.vals||!f.vals.length)return"todos";const names=f.vals.map(v=>labelFn?labelFn(v):v);return names.length<=2?names.join(", "):names.length+" selec.";}
@@ -440,6 +441,7 @@ const getFiltered=()=>{
   const arr=S.tools.filter(t=>{
     if(!pf(S.sFiltros.status,t.status))return false;
     if(!pf(S.sFiltros.dept,t.departamento))return false;
+    if(!pf(S.sFiltros.cc,t.centro_de_custo))return false;
     if(S.search){const q=S.search.toLowerCase();if(!t.ferramenta.toLowerCase().includes(q)&&!(t.departamento||"").toLowerCase().includes(q)&&!(t.categoria_funcional||"").toLowerCase().includes(q))return false;}
     return true;
   });
@@ -975,7 +977,8 @@ function buildStack(){
     <div class="sw"><span class="sico">🔍</span><input id="search-input" type="text" placeholder="Pesquisar..." value="${S.search.replace(/"/g,"&quot;")}"></div>
     ${gfDrop("s","status","Status",getStatuses(),s=>SM[s]?.l||s)}
     ${gfDrop("s","dept","Depto",getDepts())}
-    ${(S.sFiltros.status.vals.length||S.sFiltros.dept.vals.length||S.search)?`<button id="sf-reset" style="border:1px solid #E5E2D8;background:#F7F5EF;border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--muted)">Limpar</button>`:""}
+    ${gfDrop("s","cc","Centro Custo",getCentros())}
+    ${(S.sFiltros.status.vals.length||S.sFiltros.dept.vals.length||S.sFiltros.cc.vals.length||S.search)?`<button id="sf-reset" style="border:1px solid #E5E2D8;background:#F7F5EF;border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--muted)">Limpar</button>`:""}
     <span class="count-label">${f.length} / ${S.tools.length}</span>
   </div>
   <div class="card fade">
@@ -1369,7 +1372,7 @@ function attachEvents(){
   document.getElementById("btn-logout")?.addEventListener("click",async()=>{await sb.auth.signOut();showLogin();});
   document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{S.tab=btn.dataset.tab;render();}));
   document.getElementById("search-input")?.addEventListener("input",e=>{S.search=e.target.value;render();});
-  document.getElementById("sf-reset")?.addEventListener("click",()=>{S.sFiltros={status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}};S.search="";S.openFilter=null;render();});
+  document.getElementById("sf-reset")?.addEventListener("click",()=>{S.sFiltros={status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]}};S.search="";S.openFilter=null;render();});
   document.getElementById("rf-reset")?.addEventListener("click",()=>{S.rFiltros={prioridade:{mode:"in",vals:[]},tipo:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}};S.openFilter=null;render();});
   document.querySelectorAll(".gran-btn").forEach(b=>b.addEventListener("click",()=>{S.custoGran=b.dataset.gran;render();}));
   document.querySelectorAll(".histgran-btn").forEach(b=>b.addEventListener("click",()=>{S.histGran=b.dataset.histgran;render();}));
