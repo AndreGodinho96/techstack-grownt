@@ -455,26 +455,39 @@ function destroyCharts() {
 }
 
 // ─── PROJEÇÃO SET 2026 – AGO 2027 ───────────────────────────
-const PROJ_P={USD:5.80,EUR:6.60,HUB_REAJUSTE:0.05,PROV_NOVAS:3000,
+const PROJ_P={PROV_NOVAS:3000,
   MESES:["Set 26","Out 26","Nov 26","Dez 26","Jan 27","Fev 27","Mar 27","Abr 27","Mai 27","Jun 27","Jul 27","Ago 27"],
   CAL:[8,9,10,11,0,1,2,3,4,5,6,7]}; // mês de calendário (0-based) de cada coluna
+const FX_DEFAULT={usd:6.25,eur:7.00}; // câmbio registado na contratação
+let PROJ_FX=(()=>{try{const s=JSON.parse(localStorage.getItem("projFx")||"null");if(s&&s.usd>0&&s.eur>0)return s;}catch(e){}return {...FX_DEFAULT};})();
+window._applyFx=function(){
+  const u=parseFloat(String(document.getElementById("fx-usd")?.value||"").replace(",","."));
+  const e=parseFloat(String(document.getElementById("fx-eur")?.value||"").replace(",","."));
+  if(!(u>0)||!(e>0)){toast("Câmbio inválido — use valores maiores que zero",true);return;}
+  PROJ_FX={usd:u,eur:e};
+  try{localStorage.setItem("projFx",JSON.stringify(PROJ_FX));}catch(err){}
+  render();
+  toast("Projeção atualizada · USD "+u.toFixed(2).replace(".",",")+" · EUR "+e.toFixed(2).replace(".",","));
+};
+window._resetFx=function(){
+  PROJ_FX={...FX_DEFAULT};
+  try{localStorage.removeItem("projFx");}catch(err){}
+  render();
+  toast("Câmbio reposto para os valores de contratação (USD 6,25 · EUR 7,00)");
+};
+// Cenário 1: valores contratados, sem reajuste — todas as moedas estrangeiras convertidas ao câmbio manual
 function projMesTool(t,mIdx){
   const orig=parseFloat(t.custo_original)||0;
   const base=parseFloat(t.custo_brl_mes)||0;
   if(!t.moeda||t.moeda==="?") return null;
-  const n=t.ferramenta;
-  const isHub=n&&n.toLowerCase().startsWith("hubspot");
-  if(isHub){ return mIdx<8 ? base : base*(1+PROJ_P.HUB_REAJUSTE); }
   if(t.moeda==="BRL") return base;
-  if(t.moeda==="USD"&&t.recorrencia==="Mensal")  return orig*PROJ_P.USD;
-  if(t.moeda==="EUR"&&t.recorrencia==="Mensal")  return orig*PROJ_P.EUR;
-  if(t.moeda==="USD"&&t.recorrencia==="Anual")   return orig*PROJ_P.USD/12;
-  if(t.moeda==="EUR"&&t.recorrencia==="Anual")   return orig*PROJ_P.EUR/12;
-  return base;
+  const taxa=t.moeda==="USD"?PROJ_FX.usd:t.moeda==="EUR"?PROJ_FX.eur:null;
+  if(taxa===null) return base;
+  return t.recorrencia==="Anual" ? orig*taxa/12 : orig*taxa;
 }
 function buildProjecao(ativas){
-  // ── PREMISSAS (cenário moderado) — partilhadas com o gráfico ──
-  const USD=PROJ_P.USD, EUR=PROJ_P.EUR, HUB_REAJUSTE=PROJ_P.HUB_REAJUSTE, PROV_NOVAS=PROJ_P.PROV_NOVAS;
+  // ── PREMISSAS — câmbio manual (persistido neste browser) ──
+  const USD=PROJ_FX.usd, EUR=PROJ_FX.eur, PROV_NOVAS=PROJ_P.PROV_NOVAS;
   const MESES=PROJ_P.MESES;
   const projMes=projMesTool;
 
@@ -495,7 +508,7 @@ function buildProjecao(ativas){
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
     ${[
       ["Base Atual/mês",fB(totalBase),"custo registado","var(--navy)"],
-      ["Projetado Set/26",fB(totalSet),"cenário moderado","#E8461E"],
+      ["Projetado Set/26",fB(totalSet),"câmbio manual","#E8461E"],
       ["Variação",pct(varPct),"vs. base atual",varPct>0.02?"#dc2626":"#15803d"],
       ["Total Ano Fiscal",fB(totalAnual),"Set 26 – Ago 27","var(--navy)"]
     ].map(([l,v,sub,col])=>`
@@ -516,27 +529,38 @@ function buildProjecao(ativas){
     <div style="font-size:11px;color:var(--muted);margin-top:8px">Ferramentas anuais com data de renovação registada entram como desembolso único (12× o valor mensal projetado) no mês da renovação — é onde aparecem os picos, destacados a laranja. Anuais sem data são distribuídas uniformemente; passe o rato sobre um pico para ver que renovações o compõem.</div>
   </div>
 
-  <!-- PREMISSAS -->
+  <!-- PREMISSAS / CÂMBIO MANUAL -->
   <div class="card cp" style="margin-bottom:12px">
     <div class="card-header" style="margin:-18px -20px 12px">
-      <span class="card-title">Premissas do cenário moderado</span>
-      <span style="font-size:11px;color:var(--muted)">Set 2026 – Ago 2027</span>
+      <span class="card-title">Premissas — câmbio manual</span>
+      <span style="font-size:11px;color:var(--muted)">valores contratados, sem reajuste · Set 2026 – Ago 2027</span>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px">
-      ${[["USD/BRL projetado","5,80"],["EUR/BRL projetado","6,60"],["Reajuste HubSpot (mai/27)","+5%"],
-         ["Provisão novas ferramentas","R$3.000/mês"],["Ciclo","Set 2026 – Ago 2027"]
-        ].map(([k,v])=>`<div style="background:#F4F1EA;border-radius:7px;padding:7px 14px;font-size:12px">
+    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+      <div>
+        <label style="display:block;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Câmbio Dólar Utilizado</label>
+        <input id="fx-usd" type="number" step="0.01" min="0.01" value="${USD.toFixed(2)}" style="width:120px;border:1px solid #E5E2D8;border-radius:8px;padding:8px 10px;font-family:inherit;font-size:14px;font-weight:800;color:var(--navy)">
+      </div>
+      <div>
+        <label style="display:block;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Câmbio Euro Utilizado</label>
+        <input id="fx-eur" type="number" step="0.01" min="0.01" value="${EUR.toFixed(2)}" style="width:120px;border:1px solid #E5E2D8;border-radius:8px;padding:8px 10px;font-family:inherit;font-size:14px;font-weight:800;color:var(--navy)">
+      </div>
+      <button id="fx-apply" style="border:none;background:var(--orange);color:white;border-radius:8px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Atualizar projeção</button>
+      <button id="fx-reset" title="Repor câmbio de contratação (USD 6,25 · EUR 7,00)" style="border:1px solid #E5E2D8;background:#F7F5EF;border-radius:8px;padding:9px 14px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted)">Repor</button>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-left:auto">
+        ${[["Provisão novas ferramentas","R$3.000/mês"],["Renovação HubSpot","Mai/27 (fatura anual)"]].map(([k,v])=>`<div style="background:#F4F1EA;border-radius:7px;padding:7px 14px;font-size:12px">
           <span style="color:var(--muted);font-weight:600">${k}: </span>
           <span style="font-weight:800;color:var(--navy)">${v}</span>
         </div>`).join("")}
+      </div>
     </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px">Câmbio registado na contratação: USD 6,25 · EUR 7,00 — com esses valores a projeção iguala a base atual. Altere os campos e clique em <strong>Atualizar projeção</strong> para simular cenários; o câmbio escolhido fica guardado neste browser.</div>
   </div>
 
   <!-- TABELA PROJEÇÃO MENSAL -->
   <div class="card cp" style="margin-bottom:12px">
     <div class="card-header" style="margin:-18px -20px 12px">
       <span class="card-title">Projeção mensal — Set 2026 a Ago 2027</span>
-      <span style="font-size:11px;color:var(--muted)">câmbio USD ${USD.toFixed(2)} · EUR ${EUR.toFixed(2)} · HubSpot +${(HUB_REAJUSTE*100).toFixed(0)}% em mai/27</span>
+      <span style="font-size:11px;color:var(--muted)">câmbio USD ${USD.toFixed(2).replace(".",",")} · EUR ${EUR.toFixed(2).replace(".",",")} · valores contratados, sem reajuste</span>
     </div>
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:11px">
@@ -588,7 +612,7 @@ function buildProjecao(ativas){
       </table>
     </div>
     <div style="font-size:10px;color:var(--muted);margin-top:8px;display:flex;gap:16px;flex-wrap:wrap">
-      <span>🟠 Coluna mai/27 a vermelho escuro = renovação HubSpot com +5%</span>
+      <span>🟠 Coluna mai/27 a vermelho escuro = mês da renovação anual HubSpot (fatura em 20/05/2027)</span>
       <span>⚠ Ferramentas com "?" têm custo desconhecido (billing GROWNTLAB) — regularizar para precisão do modelo</span>
     </div>
   </div>`;
@@ -1326,6 +1350,9 @@ function buildModal(){
 
 function attachEvents(){
   document.getElementById("btn-refresh")?.addEventListener("click",loadData);
+  document.getElementById("fx-apply")?.addEventListener("click",window._applyFx);
+  document.getElementById("fx-reset")?.addEventListener("click",window._resetFx);
+  ["fx-usd","fx-eur"].forEach(id=>document.getElementById(id)?.addEventListener("keydown",e=>{if(e.key==="Enter")window._applyFx();}));
   document.getElementById("btn-logout")?.addEventListener("click",async()=>{await sb.auth.signOut();showLogin();});
   document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{S.tab=btn.dataset.tab;render();}));
   document.getElementById("search-input")?.addEventListener("input",e=>{S.search=e.target.value;render();});
