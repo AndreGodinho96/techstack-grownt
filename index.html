@@ -1473,7 +1473,7 @@ window._exportScreenshot=async function(){
   const old=btn?btn.textContent:"";
   if(typeof html2canvas==="undefined"){toast("A carregar biblioteca de captura…");
     try{await new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
-    catch(e){toast("Não foi possível carregar a captura de ecrã",true);return;}
+    catch(e){toast("Não foi possível carregar a captura de tela",true);return;}
   }
   if(btn){btn.disabled=true;btn.textContent="A capturar…";}
   try{
