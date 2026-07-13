@@ -895,26 +895,53 @@ function buildChartsIfNeeded() {
     const linha = buckets.map(b => b.idx.reduce((s, i) => s + linhaM[i], 0));
     const caixa = buckets.map(b => b.idx.reduce((s, i) => s + caixaM[i], 0));
     const renovByBucket = buckets.map(b => b.idx.reduce((arr, i) => arr.concat(renovByMonth[i]), []));
+    const fBRLfull = v => "R$ " + Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 });
+    const totalLabelPlugin = {
+      id: "totalLabelPlugin",
+      afterDatasetsDraw(chart) {
+        const meta = chart.getDatasetMeta(0);
+        if (!meta || meta.hidden) return;
+        const { ctx } = chart;
+        ctx.save();
+        ctx.font = "700 11px \'DM Sans\', sans-serif";
+        ctx.textAlign = "center";
+        meta.data.forEach((bar, i) => {
+          const val = chart.data.datasets[0].data[i];
+          if (val == null) return;
+          ctx.fillStyle = caixa[i] > linha[i] * 1.15 ? "#E8461E" : "#1A1F2E";
+          ctx.fillText(fBRLfull(val), bar.x, bar.y - 8);
+        });
+        ctx.restore();
+      }
+    };
     _charts["bar-projecao"] = new Chart(projCanvas, {
       type: "bar",
       data: {
         labels: labels,
         datasets: [
-          { type: "bar", label: "Desembolso estimado (caixa)", data: caixa,
+          { type: "bar", label: "Desembolso do período", data: caixa,
             backgroundColor: caixa.map((v, i) => v > linha[i] * 1.15 ? "#E8461E" : "#1A1F2E"),
             borderRadius: 6, maxBarThickness: 60 },
           { type: "line", label: "Custo projetado (" + PROJGRAN_L[S.projGran].toLowerCase() + ")", data: linha,
-            borderColor: "#E8461E", borderDash: [6, 4], borderWidth: 2, pointRadius: 0, fill: false }
+            borderColor: "#E8461E", borderDash: [6, 4], borderWidth: 2, pointRadius: 3, pointBackgroundColor: "#E8461E", fill: false }
         ]
       },
+      plugins: [totalLabelPlugin],
       options: {
         responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 30 } },
         plugins: {
           legend: { display: true, position: "bottom", labels: { color: "#555", font: { size: 11 }, boxWidth: 12, padding: 12 } },
-          tooltip: { callbacks: {
-            label: (c) => " " + c.dataset.label + ": R$ " + Number(c.raw).toLocaleString("pt-BR", { maximumFractionDigits: 0 }),
-            afterBody: (items) => { const i = items[0].dataIndex; return renovByBucket[i].length ? [""].concat(["Renovações no período:"], renovByBucket[i].map(r => "• " + r)) : []; }
-          } }
+          tooltip: {
+            backgroundColor: "#1A1F2E", titleColor: "#fff", bodyColor: "#fff",
+            titleFont: { size: 13, weight: "700" }, bodyFont: { size: 13, weight: "600" },
+            padding: 12, boxPadding: 6, displayColors: true,
+            callbacks: {
+              title: (items) => PROJGRAN_L[S.projGran] + " — " + items[0].label,
+              label: (c) => " " + c.dataset.label + ": " + fBRLfull(c.raw),
+              afterBody: (items) => { const i = items[0].dataIndex; return renovByBucket[i].length ? [""].concat(["Renovações no período:"], renovByBucket[i].map(r => "• " + r)) : []; }
+            }
+          }
         },
         scales: {
           x: { grid: { display: false }, ticks: { color: "#888", font: { size: 11 } } },
