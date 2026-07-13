@@ -973,7 +973,7 @@ function buildHTML(){
     </div>
   </div>
   <div class="content">
-    ${S.tab!=="gestao"?`<div class="metrics">
+    ${(S.tab!=="gestao"&&S.tab!=="projecao")?`<div class="metrics">
       <div class="metric"><div class="mlabel">Custo ativas / mês</div><div class="mval">${fBRL(total)}</div><div class="msub">${ativas.length} ferramentas ativas</div></div>
       <div class="metric red"><div class="mlabel">Riscos abertos</div><div class="mval">${ro.length}</div><div class="msub">${alta} de alta prioridade</div></div>
       <div class="metric amber"><div class="mlabel">Sem responsável</div><div class="mval">${semDono}</div><div class="msub">ferramentas ativas / Growntlab</div></div>
