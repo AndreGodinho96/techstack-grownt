@@ -394,7 +394,7 @@ const SBC={1:"#fee2e2",2:"#fef3c7",3:"#fff7ed",4:"#dcfce7",5:"#dbeafe"};
 const SCC={1:"#991b1b",2:"#92400e",3:"#9a3412",4:"#166534",5:"#1e40af"};
 
 const _charts={};
-const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,cambio:null,editForm:{},loading:true,saving:false,lastRefresh:null,custoGran:"mensal",histGran:"mensal",gFiltros:{status:{mode:"in",vals:["ATIVA"]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},mercado:{mode:"in",vals:[]},critica:"all"},sFiltros:{status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]}},sSort:{key:null,dir:1},rFiltros:{prioridade:{mode:"in",vals:[]},tipo:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}},openFilter:null};
+const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,cambio:null,editForm:{},loading:true,saving:false,lastRefresh:null,custoGran:"mensal",histGran:"mensal",projGran:"mensal",gFiltros:{status:{mode:"in",vals:["ATIVA"]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},mercado:{mode:"in",vals:[]},critica:"all"},sFiltros:{status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]}},sSort:{key:null,dir:1},rFiltros:{prioridade:{mode:"in",vals:[]},tipo:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}},openFilter:null};
 
 async function sbFetch(path,opts={}){
   const {data:{session}} = await sb.auth.getSession();
@@ -476,6 +476,17 @@ function destroyCharts() {
 const PROJ_P={
   MESES:["Set 26","Out 26","Nov 26","Dez 26","Jan 27","Fev 27","Mar 27","Abr 27","Mai 27","Jun 27","Jul 27","Ago 27"],
   CAL:[8,9,10,11,0,1,2,3,4,5,6,7]}; // mês de calendário (0-based) de cada coluna
+const PROJ_BUCKETS={
+  mensal:PROJ_P.MESES.map((m,i)=>({label:m,idx:[i]})),
+  trimestral:[
+    {label:"T1 · Set–Nov/26",idx:[0,1,2]},
+    {label:"T2 · Dez/26–Fev/27",idx:[3,4,5]},
+    {label:"T3 · Mar–Mai/27",idx:[6,7,8]},
+    {label:"T4 · Jun–Ago/27",idx:[9,10,11]}
+  ],
+  anual:[{label:"Ano fiscal · Set/26–Ago/27",idx:[0,1,2,3,4,5,6,7,8,9,10,11]}]
+};
+const PROJGRAN_L={mensal:"Mensal",trimestral:"Trimestral",anual:"Anual"};
 const FX_DEFAULT={usd:6.25,eur:7.00}; // câmbio registrado na contratação
 let PROJ_FX=(()=>{try{const s=JSON.parse(localStorage.getItem("projFx")||"null");if(s&&s.usd>0&&s.eur>0)return s;}catch(e){}return {...FX_DEFAULT};})();
 window._applyFx=function(){
@@ -537,14 +548,17 @@ function buildProjecao(ativas){
     </div>`).join("")}
   </div>
 
-  <!-- GRÁFICO MENSAL: PICOS -->
+  <!-- GRÁFICO PICOS -->
   <div class="card cp" style="margin-bottom:12px">
-    <div class="card-header" style="margin:-18px -20px 14px">
-      <span class="card-title">Impacto mensal — onde estão os picos</span><button class="maximize-btn" onclick="window._maximizeChart('bar-projecao','Impacto Mensal — Set 2026 a Ago 2027')">⛶ Expandir</button>
-      <span style="font-size:11px;color:var(--muted);font-weight:600">barras = desembolso de caixa · linha = custo projetado mensal</span>
+    <div class="card-header" style="margin:-18px -20px 14px;flex-wrap:wrap;gap:8px">
+      <span class="card-title">Impacto ${PROJGRAN_L[S.projGran].toLowerCase()} — onde estão os picos</span><button class="maximize-btn" onclick="window._maximizeChart('bar-projecao','Impacto ${PROJGRAN_L[S.projGran]} — Set 2026 a Ago 2027')">⛶ Expandir</button>
+      <div style="display:inline-flex;background:#F0EDE4;border-radius:8px;padding:3px;margin-left:auto">
+        ${[["mensal","Mensal"],["trimestral","Trimestral"],["anual","Anual"]].map(([k,l])=>`<button class="projgran-btn" data-projgran="${k}" style="border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;padding:6px 14px;border-radius:6px;background:${S.projGran===k?"white":"transparent"};color:${S.projGran===k?"var(--orange)":"var(--muted)"};box-shadow:${S.projGran===k?"0 1px 3px rgba(0,0,0,.1)":"none"}">${l}</button>`).join("")}
+      </div>
+      <span style="font-size:11px;color:var(--muted);font-weight:600;width:100%">barras = desembolso de caixa · linha = custo projetado ${PROJGRAN_L[S.projGran].toLowerCase()}</span>
     </div>
     <div class="chart-wrap" style="height:320px"><canvas id="bar-projecao"></canvas></div>
-    <div style="font-size:11px;color:var(--muted);margin-top:8px">Ferramentas anuais com data de renovação registrada entram como desembolso único (12× o valor mensal projetado) no mês da renovação — é onde aparecem os picos, destacados a laranja. Anuais sem data são distribuídas uniformemente; passe o mouse sobre um pico para ver quais renovações o compõem.</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">Ferramentas anuais com data de renovação registrada entram como desembolso único (12× o valor mensal projetado) no período da renovação — é onde aparecem os picos, destacados a laranja. Anuais sem data são distribuídas uniformemente; passe o mouse sobre um pico para ver quais renovações o compõem.</div>
   </div>
 
   <!-- PREMISSAS / CÂMBIO MANUAL -->
@@ -574,20 +588,21 @@ function buildProjecao(ativas){
     <div style="font-size:11px;color:var(--muted);margin-top:10px">Câmbio registrado na contratação: USD 6,25 · EUR 7,00 — com esses valores a projeção iguala a base atual. Altere os campos e clique em <strong>Atualizar projeção</strong> para simular cenários; o câmbio escolhido fica salvo neste navegador.</div>
   </div>
 
-  <!-- TABELA PROJEÇÃO MENSAL -->
+  <!-- TABELA PROJEÇÃO -->
   <div class="card cp" style="margin-bottom:12px">
     <div class="card-header" style="margin:-18px -20px 12px">
-      <span class="card-title">Projeção mensal — Set 2026 a Ago 2027</span>
+      <span class="card-title">Projeção ${PROJGRAN_L[S.projGran].toLowerCase()} por ferramenta — Set 2026 a Ago 2027</span>
       <span style="font-size:11px;color:var(--muted)">câmbio USD ${USD.toFixed(2).replace(".",",")} · EUR ${EUR.toFixed(2).replace(".",",")} · valores contratados, sem reajuste</span>
     </div>
     <div style="overflow-x:auto">
+      ${(()=>{const TB=PROJ_BUCKETS[S.projGran]||PROJ_BUCKETS.mensal;return`
       <table style="width:100%;border-collapse:collapse;font-size:11px">
         <thead>
           <tr>
             <th style="text-align:left;padding:6px 8px;background:var(--navy);color:white;white-space:nowrap;position:sticky;left:0;z-index:2;min-width:160px">Ferramenta</th>
             <th style="text-align:center;padding:6px 8px;background:var(--navy);color:white">Moeda</th>
             <th style="text-align:right;padding:6px 8px;background:#374151;color:white;white-space:nowrap">Base/mês</th>
-            ${MESES.map((m,mi)=>`<th style="text-align:right;padding:6px 8px;background:${mi===8?"#7c2d12":mi===0?"#374151":"var(--navy)"};color:white;white-space:nowrap">${m}</th>`).join("")}
+            ${TB.map(b=>`<th style="text-align:right;padding:6px 8px;background:${b.idx.includes(8)?"#7c2d12":b.idx.includes(0)?"#374151":"var(--navy)"};color:white;white-space:nowrap">${b.label}</th>`).join("")}
             <th style="text-align:right;padding:6px 8px;background:#F15F38;color:white;white-space:nowrap">Total Ano</th>
             <th style="text-align:center;padding:6px 8px;background:#F15F38;color:white">Var%</th>
           </tr>
@@ -597,14 +612,16 @@ function buildProjecao(ativas){
             const base=parseFloat(t.custo_brl_mes)||0;
             const unknown=!t.moeda||t.moeda==="?";
             const bg=ri%2===0?"white":"#FDFCF8";
-            const projs=MESES.map((_,mi)=>projMes(t,mi));
-            const totalT=projs.reduce((s,v)=>s+(v||0),0);
-            const varT=base>0&&projs[0]!=null?((projs[0]-base)/base):null;
+            const projsM=MESES.map((_,mi)=>projMes(t,mi));
+            const projs=TB.map(b=>{const vs=b.idx.map(i=>projsM[i]);return vs.some(v=>v==null)?null:vs.reduce((s,v)=>s+v,0);});
+            const totalT=projsM.reduce((s,v)=>s+(v||0),0);
+            const projSet=projMes(t,0);
+            const varT=base>0&&projSet!=null?((projSet-base)/base):null;
             return`<tr style="background:${bg}">
               <td style="padding:5px 8px;font-weight:700;white-space:nowrap;position:sticky;left:0;background:${bg};z-index:1">${t.ferramenta}</td>
               <td style="padding:5px 8px;text-align:center;color:var(--muted)">${t.moeda||"?"}</td>
               <td style="padding:5px 8px;text-align:right;font-weight:600;color:var(--muted)">${base?fBd(base):"—"}</td>
-              ${projs.map((v,mi)=>`<td style="padding:5px 8px;text-align:right;color:${unknown?"#d97706":v&&v>base*1.01?"#dc2626":v&&v<base*0.99?"#15803d":"inherit"};font-weight:${mi===8?"700":"400"}">${unknown?"⚠":v!=null?fBd(v):"—"}</td>`).join("")}
+              ${projs.map((v,bi)=>`<td style="padding:5px 8px;text-align:right;color:${unknown?"#d97706":v&&v>base*TB[bi].idx.length*1.01?"#dc2626":v&&v<base*TB[bi].idx.length*0.99?"#15803d":"inherit"};font-weight:${TB[bi].idx.includes(8)?"700":"400"}">${unknown?"⚠":v!=null?fBd(v):"—"}</td>`).join("")}
               <td style="padding:5px 8px;text-align:right;font-weight:800">${unknown?"—":fBd(totalT)}</td>
               <td style="padding:5px 8px;text-align:center;font-size:10px;color:${varT===null?"#d97706":varT>0.01?"#dc2626":varT<-0.01?"#15803d":"var(--muted)"};font-weight:700">${varT===null?"?":pct(varT)}</td>
             </tr>`;}).join("")}
@@ -613,12 +630,12 @@ function buildProjecao(ativas){
             <td style="padding:6px 8px;font-weight:900;color:white;position:sticky;left:0;background:var(--navy);z-index:1">TOTAL</td>
             <td style="padding:6px 8px;color:white"></td>
             <td style="padding:6px 8px;text-align:right;font-weight:900;color:#94a3b8">${fBd(totalBase)}</td>
-            ${MESES.map((_,mi)=>{const tot=ativas.reduce((s,t)=>{const v=projMes(t,mi);return s+(v||0);},0);return`<td style="padding:6px 8px;text-align:right;font-weight:800;color:${mi===8?"#fca5a5":"white"}">${fBd(tot)}</td>`;}).join("")}
+            ${TB.map(b=>{const tot=b.idx.reduce((s,mi)=>s+ativas.reduce((s2,t)=>{const v=projMes(t,mi);return s2+(v||0);},0),0);return`<td style="padding:6px 8px;text-align:right;font-weight:800;color:${b.idx.includes(8)?"#fca5a5":"white"}">${fBd(tot)}</td>`;}).join("")}
             <td style="padding:6px 8px;text-align:right;font-weight:900;color:#fbbf24">${fBd(totalAnual)}</td>
             <td style="padding:6px 8px;text-align:center;font-weight:800;color:${varPct>0.02?"#fca5a5":"#86efac"}">${pct(varPct)}</td>
           </tr>
         </tbody>
-      </table>
+      </table>`;})()}
     </div>
     <div style="font-size:10px;color:var(--muted);margin-top:8px;display:flex;gap:16px;flex-wrap:wrap">
       <span>🟠 Coluna mai/27 a vermelho escuro = mês da renovação anual HubSpot (fatura em 20/05/2027)</span>
@@ -852,12 +869,12 @@ function buildChartsIfNeeded() {
     });
   }
 
-  // BAR+LINE — Impacto mensal da projeção (aba Projeção)
+  // BAR+LINE — Impacto da projeção (aba Projeção), agregado por granularidade escolhida
   const projCanvas = document.getElementById("bar-projecao");
   if (projCanvas && !_charts["bar-projecao"]) {
     const MES = PROJ_P.MESES;
-    const linha = MES.map((_, mi) => ativas.reduce((s, t) => { const v = projMesTool(t, mi); return s + (v || 0); }, 0));
-    const caixa = MES.map(() => 0);
+    const linhaM = MES.map((_, mi) => ativas.reduce((s, t) => { const v = projMesTool(t, mi); return s + (v || 0); }, 0));
+    const caixaM = MES.map(() => 0);
     const renovByMonth = MES.map(() => []);
     ativas.forEach(t => {
       let idxRen = -1;
@@ -867,21 +884,26 @@ function buildChartsIfNeeded() {
       }
       if (idxRen >= 0) {
         const v = (projMesTool(t, idxRen) || 0) * 12;
-        caixa[idxRen] += v;
+        caixaM[idxRen] += v;
         renovByMonth[idxRen].push(t.ferramenta + " — R$ " + Math.round(v).toLocaleString("pt-BR"));
       } else {
-        MES.forEach((_, mi) => { caixa[mi] += projMesTool(t, mi) || 0; });
+        MES.forEach((_, mi) => { caixaM[mi] += projMesTool(t, mi) || 0; });
       }
     });
+    const buckets = PROJ_BUCKETS[S.projGran] || PROJ_BUCKETS.mensal;
+    const labels = buckets.map(b => b.label);
+    const linha = buckets.map(b => b.idx.reduce((s, i) => s + linhaM[i], 0));
+    const caixa = buckets.map(b => b.idx.reduce((s, i) => s + caixaM[i], 0));
+    const renovByBucket = buckets.map(b => b.idx.reduce((arr, i) => arr.concat(renovByMonth[i]), []));
     _charts["bar-projecao"] = new Chart(projCanvas, {
       type: "bar",
       data: {
-        labels: MES,
+        labels: labels,
         datasets: [
           { type: "bar", label: "Desembolso estimado (caixa)", data: caixa,
             backgroundColor: caixa.map((v, i) => v > linha[i] * 1.15 ? "#E8461E" : "#1A1F2E"),
-            borderRadius: 6, maxBarThickness: 38 },
-          { type: "line", label: "Custo projetado mensal", data: linha,
+            borderRadius: 6, maxBarThickness: 60 },
+          { type: "line", label: "Custo projetado (" + PROJGRAN_L[S.projGran].toLowerCase() + ")", data: linha,
             borderColor: "#E8461E", borderDash: [6, 4], borderWidth: 2, pointRadius: 0, fill: false }
         ]
       },
@@ -891,7 +913,7 @@ function buildChartsIfNeeded() {
           legend: { display: true, position: "bottom", labels: { color: "#555", font: { size: 11 }, boxWidth: 12, padding: 12 } },
           tooltip: { callbacks: {
             label: (c) => " " + c.dataset.label + ": R$ " + Number(c.raw).toLocaleString("pt-BR", { maximumFractionDigits: 0 }),
-            afterBody: (items) => { const i = items[0].dataIndex; return renovByMonth[i].length ? [""].concat(["Renovações no mês:"], renovByMonth[i].map(r => "• " + r)) : []; }
+            afterBody: (items) => { const i = items[0].dataIndex; return renovByBucket[i].length ? [""].concat(["Renovações no período:"], renovByBucket[i].map(r => "• " + r)) : []; }
           } }
         },
         scales: {
@@ -1391,6 +1413,7 @@ function attachEvents(){
   document.getElementById("sf-reset")?.addEventListener("click",()=>{S.sFiltros={status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]}};S.search="";S.openFilter=null;render();});
   document.getElementById("rf-reset")?.addEventListener("click",()=>{S.rFiltros={prioridade:{mode:"in",vals:[]},tipo:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}};S.openFilter=null;render();});
   document.querySelectorAll(".gran-btn").forEach(b=>b.addEventListener("click",()=>{S.custoGran=b.dataset.gran;render();}));
+  document.querySelectorAll(".projgran-btn").forEach(b=>b.addEventListener("click",()=>{S.projGran=b.dataset.projgran;render();}));
   document.querySelectorAll(".histgran-btn").forEach(b=>b.addEventListener("click",()=>{S.histGran=b.dataset.histgran;render();}));
   document.querySelectorAll(".gf-btn").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();const key=b.dataset.scope+":"+b.dataset.gf;S.openFilter=S.openFilter===key?null:key;render();}));
   document.querySelectorAll(".gf-pop").forEach(p=>p.addEventListener("click",e=>e.stopPropagation()));
