@@ -1331,6 +1331,7 @@ function buildModal(){
           <div class="ff"><label>NPS interno</label><select id="f-nps"><option value="">—</option>${["Usa bem","Usa pouco","Não usa"].map(v=>`<option value="${v}"${f.nps_interno===v?" selected":""}>${v}</option>`).join("")}</select></div>
           <div class="ff"><label>Substituto</label><input id="f-substituto" value="${f.substituto||""}"></div>
           <div class="ff"><label>Data contratação</label><input type="date" id="f-data_c" value="${f.data_contratacao||""}"></div>
+          <div class="ff"><label>Próxima renovação</label><input type="date" id="f-prox_renov" value="${f.prox_renovacao||""}"></div>
           <div class="ff"><label>Última revisão</label><input type="date" id="f-ultima_r" value="${f.ultima_revisao||""}"></div>
           <div class="ff ff-full"><label>Ação pendente</label><input id="f-acao" value="${f.acao_pendente||""}"></div>
           <div class="ff ff-full"><label>Justificativa da contratação</label><textarea id="f-justif_contr" rows="2" style="width:100%;font-family:inherit;font-size:13px;padding:8px;border:1px solid #E5E2D8;border-radius:6px;resize:vertical;box-sizing:border-box">${f.justificativa_contratacao||""}</textarea></div>
@@ -1370,7 +1371,7 @@ function attachEvents(){
   if(!window._gfOutside){window._gfOutside=true;document.addEventListener("click",e=>{if(S.openFilter&&e.target.closest&&!e.target.closest(".gf-wrap")){S.openFilter=null;render();}});}
   document.querySelectorAll(".edit-btn").forEach(btn=>btn.addEventListener("click",()=>{
     const tool=S.tools.find(t=>t.id==btn.dataset.id);if(!tool)return;
-    S.editTool=tool;S.editForm={responsavel:tool.responsavel||"",aprovado_por:tool.aprovado_por||"",centro_de_custo:tool.centro_de_custo||"",score_utilizacao:tool.score_utilizacao||"",nps_interno:tool.nps_interno||"",substituto:tool.substituto||"",data_contratacao:tool.data_contratacao||"",ultima_revisao:tool.ultima_revisao||"",acao_pendente:tool.acao_pendente||"",custo_original:tool.custo_original||"",moeda:tool.moeda||"BRL",custo_brl_mes:tool.custo_brl_mes||"",cambio_contratacao:tool.cambio_contratacao||"",cambio_notas:tool.cambio_notas||""};
+    S.editTool=tool;S.editForm={responsavel:tool.responsavel||"",aprovado_por:tool.aprovado_por||"",centro_de_custo:tool.centro_de_custo||"",score_utilizacao:tool.score_utilizacao||"",nps_interno:tool.nps_interno||"",substituto:tool.substituto||"",data_contratacao:tool.data_contratacao||"",ultima_revisao:tool.ultima_revisao||"",prox_renovacao:tool.prox_renovacao||"",acao_pendente:tool.acao_pendente||"",custo_original:tool.custo_original||"",moeda:tool.moeda||"BRL",custo_brl_mes:tool.custo_brl_mes||"",cambio_contratacao:tool.cambio_contratacao||"",cambio_notas:tool.cambio_notas||""};
     render();
   }));
   document.querySelectorAll(".cbtn").forEach(btn=>btn.addEventListener("click",async()=>{
@@ -1382,7 +1383,7 @@ function attachEvents(){
   document.getElementById("modal-close")?.addEventListener("click",closeModal);
   document.getElementById("modal-cancel")?.addEventListener("click",closeModal);
   document.getElementById("modal-save")?.addEventListener("click",async()=>{
-    const gv=id=>document.getElementById(id)?.value||null;const gn=id=>{const v=document.getElementById(id)?.value;return v?parseFloat(v):null;};const payload={responsavel:gv("f-responsavel"),aprovado_por:gv("f-aprovado_por"),centro_de_custo:gv("f-centro"),score_utilizacao:gv("f-score")?parseInt(gv("f-score")):null,nps_interno:gv("f-nps"),substituto:gv("f-substituto"),data_contratacao:gv("f-data_c"),ultima_revisao:gv("f-ultima_r"),acao_pendente:gv("f-acao"),custo_original:gn("f-custo_original"),moeda:gv("f-moeda")||"BRL",custo_brl_mes:gn("f-custo_brl_mes"),cambio_contratacao:gn("f-cambio"),cambio_notas:gv("f-cambio_notas"),status:gv("f-status")||"ATIVA",justificativa_contratacao:gv("f-justif_contr"),responsavel_contratacao:gv("f-resp_contr"),data_cancelamento:gv("f-data_cancel"),etapa_funil:gv("f-etapa"),justificativa_funil:gv("f-justif_funil")};
+    const gv=id=>document.getElementById(id)?.value||null;const gn=id=>{const v=document.getElementById(id)?.value;return v?parseFloat(v):null;};const payload={responsavel:gv("f-responsavel"),aprovado_por:gv("f-aprovado_por"),centro_de_custo:gv("f-centro"),score_utilizacao:gv("f-score")?parseInt(gv("f-score")):null,nps_interno:gv("f-nps"),substituto:gv("f-substituto"),data_contratacao:gv("f-data_c"),ultima_revisao:gv("f-ultima_r"),prox_renovacao:gv("f-prox_renov"),acao_pendente:gv("f-acao"),custo_original:gn("f-custo_original"),moeda:gv("f-moeda")||"BRL",custo_brl_mes:gn("f-custo_brl_mes"),cambio_contratacao:gn("f-cambio"),cambio_notas:gv("f-cambio_notas"),status:gv("f-status")||"ATIVA",justificativa_contratacao:gv("f-justif_contr"),responsavel_contratacao:gv("f-resp_contr"),data_cancelamento:gv("f-data_cancel"),etapa_funil:gv("f-etapa"),justificativa_funil:gv("f-justif_funil")};
     S.saving=true;render();
     try{await patchTool(S.editTool.id,payload);S.tools=S.tools.map(t=>t.id===S.editTool.id?{...t,...payload}:t);toast("Alteração guardada");S.editTool=null;}
     catch(e){toast("Erro ao guardar",true);}
