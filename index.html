@@ -1256,6 +1256,10 @@ function buildCustos(ativas,total){
   </div>`;}
 
 function buildHistorico(){
+  const snapsOrd=[...(S.snapshots||[])].sort((a,b)=>new Date(a.mes_referencia)-new Date(b.mes_referencia));
+  const ultimoSnap=snapsOrd[snapsOrd.length-1]||null;
+  const mesAtualKey=new Date().toISOString().slice(0,7);
+  const snapDesteMes=ultimoSnap&&ultimoSnap.mes_referencia.slice(0,7)===mesAtualKey;
   const canc_total = S.changelog.filter(c=>c.tipo_evento==="Cancelamento").length;
   const contr_total = S.changelog.filter(c=>c.tipo_evento==="Contratação").length;
   const outros_total = S.changelog.length - canc_total - contr_total;
@@ -1265,6 +1269,15 @@ function buildHistorico(){
   const agg={};S.changelog.forEach(c=>{const k=perKey(c.data_evento);if(!agg[k])agg[k]={periodo:k,n:0,impacto:0,canc:0,contr:0};agg[k].n++;agg[k].impacto+=parseFloat(c.impacto_brl)||0;if(c.tipo_evento==="Cancelamento")agg[k].canc++;if(c.tipo_evento==="Contratação")agg[k].contr++;});
   const aggArr=Object.values(agg).sort((a,b)=>a.periodo<b.periodo?1:-1);
   return`
+  <!-- SNAPSHOT MENSAL -->
+  <div class="card cp" style="margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Snapshots mensais registrados</div>
+      <div style="font-size:13px;color:var(--navy)">${ultimoSnap?`Último: <strong>${new Date(ultimoSnap.mes_referencia+"T12:00:00").toLocaleDateString("pt-BR",{month:"long",year:"numeric"})}</strong> · ${Number(ultimoSnap.total_ativas_brl).toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0})} <span style="color:var(--muted)">(${snapsOrd.length} no total)</span>`:"Nenhum snapshot registrado ainda"}</div>
+    </div>
+    <button id="btn-snapshot" style="margin-left:auto;border:none;background:var(--orange);color:white;border-radius:8px;padding:10px 18px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">📸 ${snapDesteMes?"Atualizar snapshot deste mês":"Criar snapshot deste mês"}</button>
+  </div>
+
   <!-- METRICS HISTORICO -->
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
     <div style="background:var(--navy);border-radius:8px;padding:14px 16px;border-top:3px solid var(--orange)">
@@ -1396,6 +1409,7 @@ function buildModal(){
 
 function attachEvents(){
   document.getElementById("btn-export")?.addEventListener("click",window._exportSnapshot);
+  document.getElementById("btn-snapshot")?.addEventListener("click",window._criarSnapshot);
   document.getElementById("btn-screenshot")?.addEventListener("click",window._exportScreenshot);
   document.getElementById("btn-refresh")?.addEventListener("click",loadData);
   document.querySelectorAll(".th-sort").forEach(th=>th.addEventListener("click",()=>{
@@ -1681,6 +1695,33 @@ window._exportSnapshot = async function(){
   }
 };
 
+
+window._criarSnapshot = async function(){
+  const btn = document.getElementById("btn-snapshot");
+  const old = btn?btn.textContent:"";
+  if(btn){btn.disabled=true;btn.textContent="A gravar…";}
+  try{
+    const hoje = new Date();
+    const mesRef = hoje.toISOString().slice(0,7)+"-01";
+    const totalAtivas = getAtivas().reduce((s,t)=>s+(parseFloat(t.custo_brl_mes)||0),0);
+    const notas = "Snapshot gerado pelo painel em "+hoje.toLocaleDateString("pt-BR")+" às "+hoje.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+    const existing = (S.snapshots||[]).find(s=>s.mes_referencia.slice(0,7)===mesRef.slice(0,7));
+    if(existing){
+      await sbFetch("snapshots_mensais?id=eq."+existing.id,{method:"PATCH",body:JSON.stringify({total_ativas_brl:totalAtivas,notas}),prefer:"return=minimal"});
+    }else{
+      await sbFetch("snapshots_mensais",{method:"POST",body:JSON.stringify({mes_referencia:mesRef,total_ativas_brl:totalAtivas,notas}),prefer:"return=minimal"});
+    }
+    const fresh = await sbFetch("snapshots_mensais?order=mes_referencia.asc&select=*");
+    S.snapshots = fresh||S.snapshots;
+    toast(existing?"Snapshot deste mês atualizado":"Snapshot criado com sucesso");
+    render();
+  }catch(e){
+    console.error("criarSnapshot:",e);
+    toast("Erro ao gravar snapshot",true);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=old;}
+  }
+};
 
 initAuth();
 </script>
