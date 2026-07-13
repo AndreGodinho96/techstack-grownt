@@ -663,11 +663,9 @@ function buildGestao(ativas,total){
   const renovacoes=ativas.filter(t=>t.prox_renovacao).map(t=>{const d=new Date(t.prox_renovacao+"T12:00:00");return{...t,_d:d,_dias:Math.ceil((d-hoje)/(1000*60*60*24))};}).filter(t=>t._dias>=0&&t._dias<=90).sort((a,b)=>a._dias-b._dias);
   const totalRenovacoes=renovacoes.reduce((s,t)=>s+(parseFloat(t.custo_brl_mes)||0),0);
   const snaps=[...(S.snapshots||[])].sort((a,b)=>new Date(a.mes_referencia)-new Date(b.mes_referencia));
-  const ultimos=snaps.slice(-3).map(s=>parseFloat(s.total_ativas_brl)||0);
-  if(ultimos.length===0)ultimos.push(total);
-  const mediaRecente=ultimos.reduce((s,v)=>s+v,0)/ultimos.length;
-  const projecaoAnual=mediaRecente*12;
-  const tendencia=ultimos.length>1?((ultimos[ultimos.length-1]-ultimos[0])/ultimos[0]*100).toFixed(1):0;
+  const projecaoAnual=total*12;
+  const baseTendencia=snaps.length?(parseFloat(snaps[0].total_ativas_brl)||total):total;
+  const tendencia=baseTendencia>0?(((total-baseTendencia)/baseTendencia)*100).toFixed(1):0;
   const scatter=ativas.filter(t=>t.custo_brl_mes&&t.score_utilizacao);
   const semaforo=ativas.map(t=>({...t,_nivel:t.missao_critica&&!t.substituto?"red":t.missao_critica&&t.substituto?"green":!t.substituto?"amber":"green"}));
   const cats=[...new Set(ativas.map(t=>t.categoria_funcional).filter(Boolean))];
@@ -714,7 +712,7 @@ function buildGestao(ativas,total){
     </details>
   </div>
   <div class="g2" style="margin-bottom:12px;grid-template-columns:1fr 1fr 1fr 1fr">
-    <div class="metric" style="border-top:3px solid var(--orange)"><div class="mlabel">Custo anual projectado</div><div class="mval" style="font-size:18px">${fB(projecaoAnual)}</div><div class="msub">${tendencia>0?"+":""}${tendencia}% tendência recente</div></div>
+    <div class="metric" style="border-top:3px solid var(--orange)"><div class="mlabel">Custo anual projetado</div><div class="mval" style="font-size:18px">${fB(projecaoAnual)}</div><div class="msub">${tendencia>0?"+":""}${tendencia}% vs. ${snaps.length?"snapshot "+new Date(snaps[0].mes_referencia+"T12:00:00").toLocaleDateString("pt-BR",{month:"short",year:"2-digit"}):"início"}</div></div>
     <div class="metric" style="border-top:3px solid ${renovacoes.length>0?"#d97706":"#16a34a"}"><div class="mlabel">Renovações (90 dias)</div><div class="mval">${renovacoes.length}</div><div class="msub">${fB(totalRenovacoes)} em risco</div></div>
     <div class="metric" style="border-top:3px solid #dc2626"><div class="mlabel">Lock-in crítico</div><div class="mval">${semaforo.filter(t=>t._nivel==="red").length}</div><div class="msub">missão crítica s/ substituto</div></div>
     <div class="metric" style="border-top:3px solid #7c3aed"><div class="mlabel">Sobreposições</div><div class="mval">${cobertura.filter(c=>c.overlap).length}</div><div class="msub">categorias com 3+ ferramentas</div></div>
