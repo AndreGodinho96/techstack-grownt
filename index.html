@@ -394,7 +394,7 @@ const SBC={1:"#fee2e2",2:"#fef3c7",3:"#fff7ed",4:"#dcfce7",5:"#dbeafe"};
 const SCC={1:"#991b1b",2:"#92400e",3:"#9a3412",4:"#166534",5:"#1e40af"};
 
 const _charts={};
-const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,cambio:null,editForm:{},loading:true,saving:false,lastRefresh:null,custoGran:"mensal",histGran:"mensal",projGran:"mensal",gFiltros:{status:{mode:"in",vals:["ATIVA"]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},mercado:{mode:"in",vals:[]},critica:"all"},sFiltros:{status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]}},sSort:{key:null,dir:1},rFiltros:{prioridade:{mode:"in",vals:[]},tipo:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}},openFilter:null};
+const S={tools:[],risks:[],changelog:[],snapshots:[],tab:"stack",search:"",fStatus:"all",fDept:"all",editTool:null,expandedRow:null,cambio:null,editForm:{},loading:true,saving:false,lastRefresh:null,custoGran:"mensal",histGran:"mensal",projGran:"mensal",gFiltros:{status:{mode:"in",vals:["ATIVA"]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},critica:"all"},sFiltros:{status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]}},sSort:{key:null,dir:1},rFiltros:{prioridade:{mode:"in",vals:[]},tipo:{mode:"in",vals:[]},dept:{mode:"in",vals:[]}},openFilter:null};
 
 async function sbFetch(path,opts={}){
   const {data:{session}} = await sb.auth.getSession();
@@ -648,13 +648,12 @@ function buildProjecao(ativas){
 function buildGestao(ativas,total){
   const hoje=new Date();
   const F=S.gFiltros;
-  ativas=S.tools.filter(t=>pf(F.status,t.status)&&pf(F.dept,t.departamento)&&pf(F.cc,t.centro_de_custo)&&pf(F.cat,t.categoria_funcional)&&pf(F.mercado,(t.mercado||"Global"))&&(F.critica==="all"||(F.critica==="sim"?!!t.missao_critica:!t.missao_critica)));
+  ativas=S.tools.filter(t=>pf(F.status,t.status)&&pf(F.dept,t.departamento)&&pf(F.cc,t.centro_de_custo)&&pf(F.cat,t.categoria_funcional)&&(F.critica==="all"||(F.critica==="sim"?!!t.missao_critica:!t.missao_critica)));
   total=ativas.reduce((s,t)=>s+(parseFloat(t.custo_brl_mes)||0),0)||1;
   const ccs=[...new Set(S.tools.map(t=>t.centro_de_custo).filter(Boolean))].sort();
   const catsF=[...new Set(S.tools.map(t=>t.categoria_funcional).filter(Boolean))].sort();
   const statsF=getStatuses();
   const deptsF=getDepts();
-  const mercsF=[...new Set(S.tools.map(t=>t.mercado||"Global"))].sort();
   const STAGES=[{k:"Atração",side:"L",h:150},{k:"Educação & Nutrição",side:"L",h:126},{k:"Prospecção & Qualificação",side:"L",h:102},{k:"Conversão / Fecho",side:"C",h:80},{k:"Onboarding & Ativação",side:"R",h:102},{k:"Retenção & Sucesso",side:"R",h:126},{k:"Expansão & Advocacy",side:"R",h:150}];
   const SIDECOL={L:{bg:"linear-gradient(180deg,#F15F38,#E8461E)",c:"white"},C:{bg:"var(--navy)",c:"white"},R:{bg:"linear-gradient(180deg,#99C5C8,#5FA9AD)",c:"#0f2f31"}};
   const stagesOf=t=>(t.etapa_funil||"").split(",").map(s=>s.trim()).filter(Boolean);
@@ -672,8 +671,6 @@ function buildGestao(ativas,total){
   const semaforo=ativas.map(t=>({...t,_nivel:t.missao_critica&&!t.substituto?"red":t.missao_critica&&t.substituto?"green":!t.substituto?"amber":"green"}));
   const cats=[...new Set(ativas.map(t=>t.categoria_funcional).filter(Boolean))];
   const cobertura=cats.map(c=>{const tools=ativas.filter(t=>t.categoria_funcional===c);const custo=tools.reduce((s,t)=>s+(parseFloat(t.custo_brl_mes)||0),0);return{cat:c,n:tools.length,custo,overlap:tools.length>2};}).sort((a,b)=>b.custo-a.custo);
-  const mercados=["Global","BR","PT","CO"];
-  const mData=mercados.map(m=>({m,tools:ativas.filter(t=>(t.mercado||"Global")===m),custo:ativas.filter(t=>(t.mercado||"Global")===m).reduce((s,t)=>s+(parseFloat(t.custo_brl_mes)||0),0)})).filter(x=>x.tools.length>0);
   const PC={red:"#dc2626",amber:"#d97706",green:"#16a34a"};
   const PB={red:"#fef2f2",amber:"#fffbeb",green:"#f0fdf4"};
   const fB=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0});
@@ -684,7 +681,6 @@ function buildGestao(ativas,total){
     ${gfDrop("g","dept","Depto",deptsF)}
     ${gfDrop("g","cc","Centro custo",ccs)}
     ${gfDrop("g","cat","Categoria",catsF)}
-    ${gfDrop("g","mercado","Mercado",mercsF)}
     <select id="gf-critica" style="border:1px solid #E5E2D8;background:white;border-radius:7px;padding:6px 10px;font-size:12px;font-weight:700;font-family:inherit;color:var(--navy);cursor:pointer"><option value="all">Missão crítica: todas</option><option value="sim"${F.critica==="sim"?" selected":""}>Só críticas</option><option value="nao"${F.critica==="nao"?" selected":""}>Não críticas</option></select>
     <button id="gf-reset" style="border:1px solid #E5E2D8;background:#F7F5EF;border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--muted)">Limpar tudo</button>
     <span style="font-size:11px;color:var(--muted);font-weight:700;margin-left:auto">${ativas.length} ferramenta${ativas.length!==1?"s":""} · ${fB(total)}/mês</span>
@@ -1421,7 +1417,7 @@ function attachEvents(){
   document.querySelectorAll(".gf-clear").forEach(b=>b.addEventListener("click",()=>{({g:S.gFiltros,s:S.sFiltros,r:S.rFiltros}[b.dataset.scope])[b.dataset.gf].vals=[];render();}));
   document.querySelectorAll(".gf-close").forEach(b=>b.addEventListener("click",()=>{S.openFilter=null;render();}));
   document.getElementById("gf-critica")?.addEventListener("change",e=>{S.gFiltros.critica=e.target.value;render();});
-  document.getElementById("gf-reset")?.addEventListener("click",()=>{S.gFiltros={status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},mercado:{mode:"in",vals:[]},critica:"all"};S.openFilter=null;render();});
+  document.getElementById("gf-reset")?.addEventListener("click",()=>{S.gFiltros={status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},critica:"all"};S.openFilter=null;render();});
   if(!window._gfOutside){window._gfOutside=true;document.addEventListener("click",e=>{if(S.openFilter&&e.target.closest&&!e.target.closest(".gf-wrap")){S.openFilter=null;render();}});}
   document.querySelectorAll(".edit-btn").forEach(btn=>btn.addEventListener("click",()=>{
     const tool=S.tools.find(t=>t.id==btn.dataset.id);if(!tool)return;
