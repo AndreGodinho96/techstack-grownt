@@ -721,15 +721,20 @@ function buildGestao(ativas,total){
   </div>
   <div class="card cp" style="margin-top:12px">
     <div class="card-header" style="margin:-18px -20px 14px"><span class="card-title">Bowtie — ferramentas por etapa do funil</span><span style="font-size:11px;color:var(--muted);font-weight:600">modelo Winning by Design · passe o mouse para ver a justificativa</span></div>
-    <div style="display:flex;align-items:flex-start;gap:6px;overflow-x:auto;padding-bottom:6px">
-      ${STAGES.map(st=>{const tools=byStage(st.k);const sc=SIDECOL[st.side];return`<div style="flex:1;min-width:118px;display:flex;flex-direction:column;align-items:center">
-        <div style="width:100%;min-height:${st.h}px;background:${sc.bg};border-radius:8px;display:flex;flex-direction:column;align-items:center;padding:8px 6px;gap:4px">
-          <span style="font-size:20px;font-weight:900;color:${sc.c}">${tools.length}</span>
-          ${tools.map(t=>`<span title="${(t.justificativa_funil||"").replace(/"/g,"&quot;")}" style="font-size:9.5px;font-weight:700;color:${sc.c};background:rgba(255,255,255,.2);border-radius:4px;padding:1px 6px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:help">${t.ferramenta}</span>`).join("")||`<span style="font-size:9px;color:${sc.c};opacity:.7">—</span>`}
+    <div style="display:flex;align-items:stretch;gap:2px;overflow-x:auto;padding-bottom:6px">
+      ${STAGES.map((st,i)=>{const tools=byStage(st.k);const sc=SIDECOL[st.side];const BOWCLIP=["polygon(0% 0%, 100% 8.8%, 100% 91.2%, 0% 100%)","polygon(0% 8.8%, 100% 17.5%, 100% 82.5%, 0% 91.2%)","polygon(0% 17.5%, 100% 27.5%, 100% 72.5%, 0% 82.5%)","polygon(0% 27.5%, 100% 27.5%, 100% 72.5%, 0% 72.5%)","polygon(0% 27.5%, 100% 17.5%, 100% 82.5%, 0% 72.5%)","polygon(0% 17.5%, 100% 8.8%, 100% 91.2%, 0% 82.5%)","polygon(0% 8.8%, 100% 0%, 100% 100%, 0% 91.2%)"];
+      return`<div style="flex:1;min-width:110px;display:flex;flex-direction:column;align-items:center">
+        <div style="position:relative;width:100%;height:200px">
+          <div style="position:absolute;inset:0;background:${sc.bg};clip-path:${BOWCLIP[i]}"></div>
+          <div style="position:relative;z-index:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 8px;gap:4px">
+            <span style="font-size:20px;font-weight:900;color:${sc.c}">${tools.length}</span>
+            ${tools.map(t=>`<span title="${(t.justificativa_funil||"").replace(/"/g,"&quot;")}" style="font-size:9.5px;font-weight:700;color:${sc.c};background:rgba(255,255,255,.22);border-radius:4px;padding:1px 6px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:help">${t.ferramenta}</span>`).join("")||`<span style="font-size:9px;color:${sc.c};opacity:.7">—</span>`}
+          </div>
         </div>
         <div style="font-size:10px;font-weight:800;color:var(--navy);text-align:center;margin-top:6px;line-height:1.2">${st.k}</div>
       </div>`;}).join("")}
     </div>
+    <div style="text-align:center;font-size:9px;color:var(--muted);margin-top:-2px;letter-spacing:.05em;text-transform:uppercase">◄ Aquisição · Nó — Conversão · Retenção ►</div>
     ${transv.length?`<div style="margin-top:10px;background:#F4F1EA;border:1px dashed #D8D5C4;border-radius:8px;padding:8px 12px">
       <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Camada transversal (todas as etapas)</div>
       <div style="display:flex;flex-wrap:wrap;gap:5px">${transv.map(t=>`<span title="${(t.justificativa_funil||"").replace(/"/g,"&quot;")}" style="font-size:10px;font-weight:700;color:var(--navy);background:white;border:1px solid #E5E2D8;border-radius:5px;padding:2px 8px;cursor:help">${t.ferramenta}</span>`).join("")}</div>
