@@ -1454,7 +1454,14 @@ function attachEvents(){
     });
     if(Object.keys(payload).length===0){toast("Nenhuma alteração para salvar");S.editTool=null;render();return;}
     S.saving=true;render();
-    try{await patchTool(S.editTool.id,payload);S.tools=S.tools.map(t=>t.id===S.editTool.id?{...t,...payload}:t);toast("Alteração guardada · "+Object.keys(payload).length+" campo(s)");S.editTool=null;}
+    try{
+      await patchTool(S.editTool.id,payload);
+      let fresh=null;
+      try{fresh=await sbFetch("tools?id=eq."+S.editTool.id+"&select=*,mercado,missao_critica,benchmark_mercado,cambio_contratacao,cambio_notas");}catch(e){}
+      S.tools=S.tools.map(t=>t.id===S.editTool.id?((fresh&&fresh[0])?fresh[0]:{...t,...payload}):t);
+      toast("Alteração guardada · "+Object.keys(payload).length+" campo(s)");
+      S.editTool=null;
+    }
     catch(e){toast("Erro ao guardar",true);}
     finally{S.saving=false;render();}
   });
