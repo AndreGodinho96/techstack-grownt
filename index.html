@@ -455,7 +455,7 @@ function destroyCharts() {
 }
 
 // ─── PROJEÇÃO SET 2026 – AGO 2027 ───────────────────────────
-const PROJ_P={PROV_NOVAS:3000,
+const PROJ_P={
   MESES:["Set 26","Out 26","Nov 26","Dez 26","Jan 27","Fev 27","Mar 27","Abr 27","Mai 27","Jun 27","Jul 27","Ago 27"],
   CAL:[8,9,10,11,0,1,2,3,4,5,6,7]}; // mês de calendário (0-based) de cada coluna
 const FX_DEFAULT={usd:6.25,eur:7.00}; // câmbio registado na contratação
@@ -487,7 +487,7 @@ function projMesTool(t,mIdx){
 }
 function buildProjecao(ativas){
   // ── PREMISSAS — câmbio manual (persistido neste browser) ──
-  const USD=PROJ_FX.usd, EUR=PROJ_FX.eur, PROV_NOVAS=PROJ_P.PROV_NOVAS;
+  const USD=PROJ_FX.usd, EUR=PROJ_FX.eur;
   const MESES=PROJ_P.MESES;
   const projMes=projMesTool;
 
@@ -498,8 +498,8 @@ function buildProjecao(ativas){
   // ── TOTAIS ────────────────────────────────────────────────
   const totalBase=ativas.reduce((s,t)=>s+(parseFloat(t.custo_brl_mes)||0),0);
   // set/26 = mIdx 0
-  const totalSet=ativas.reduce((s,t)=>{const v=projMes(t,0);return s+(v||0);},0)+PROV_NOVAS;
-  const totalAnual=MESES.reduce((_,m,mi)=>_+ativas.reduce((s,t)=>{const v=projMes(t,mi);return s+(v||0);},0)+PROV_NOVAS,0);
+  const totalSet=ativas.reduce((s,t)=>{const v=projMes(t,0);return s+(v||0);},0);
+  const totalAnual=MESES.reduce((_,m,mi)=>_+ativas.reduce((s,t)=>{const v=projMes(t,mi);return s+(v||0);},0),0);
   const varPct=(totalSet-totalBase)/totalBase;
 
   // ── RENDER ────────────────────────────────────────────────
@@ -547,7 +547,7 @@ function buildProjecao(ativas){
       <button id="fx-apply" style="border:none;background:var(--orange);color:white;border-radius:8px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Atualizar projeção</button>
       <button id="fx-reset" title="Repor câmbio de contratação (USD 6,25 · EUR 7,00)" style="border:1px solid #E5E2D8;background:#F7F5EF;border-radius:8px;padding:9px 14px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted)">Repor</button>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-left:auto">
-        ${[["Provisão novas ferramentas","R$3.000/mês"],["Renovação HubSpot","Mai/27 (fatura anual)"]].map(([k,v])=>`<div style="background:#F4F1EA;border-radius:7px;padding:7px 14px;font-size:12px">
+        ${[["Renovação HubSpot","Mai/27 (fatura anual)"]].map(([k,v])=>`<div style="background:#F4F1EA;border-radius:7px;padding:7px 14px;font-size:12px">
           <span style="color:var(--muted);font-weight:600">${k}: </span>
           <span style="font-weight:800;color:var(--navy)">${v}</span>
         </div>`).join("")}
@@ -590,21 +590,12 @@ function buildProjecao(ativas){
               <td style="padding:5px 8px;text-align:right;font-weight:800">${unknown?"—":fBd(totalT)}</td>
               <td style="padding:5px 8px;text-align:center;font-size:10px;color:${varT===null?"#d97706":varT>0.01?"#dc2626":varT<-0.01?"#15803d":"var(--muted)"};font-weight:700">${varT===null?"?":pct(varT)}</td>
             </tr>`;}).join("")}
-          <!-- Provisão -->
-          <tr style="background:#EDE9FE">
-            <td style="padding:5px 8px;font-weight:700;color:#7c3aed;position:sticky;left:0;background:#EDE9FE;z-index:1">Provisão: novas ferramentas</td>
-            <td style="padding:5px 8px;text-align:center;color:var(--muted)">BRL</td>
-            <td style="padding:5px 8px;text-align:right;color:var(--muted)">—</td>
-            ${MESES.map(()=>`<td style="padding:5px 8px;text-align:right;font-weight:600;color:#7c3aed">${fBd(PROV_NOVAS)}</td>`).join("")}
-            <td style="padding:5px 8px;text-align:right;font-weight:800;color:#7c3aed">${fBd(PROV_NOVAS*12)}</td>
-            <td style="padding:5px 8px;text-align:center;color:var(--muted)">—</td>
-          </tr>
           <!-- TOTAL -->
           <tr style="background:var(--navy)">
             <td style="padding:6px 8px;font-weight:900;color:white;position:sticky;left:0;background:var(--navy);z-index:1">TOTAL</td>
             <td style="padding:6px 8px;color:white"></td>
             <td style="padding:6px 8px;text-align:right;font-weight:900;color:#94a3b8">${fBd(totalBase)}</td>
-            ${MESES.map((_,mi)=>{const tot=ativas.reduce((s,t)=>{const v=projMes(t,mi);return s+(v||0);},0)+PROV_NOVAS;return`<td style="padding:6px 8px;text-align:right;font-weight:800;color:${mi===8?"#fca5a5":"white"}">${fBd(tot)}</td>`;}).join("")}
+            ${MESES.map((_,mi)=>{const tot=ativas.reduce((s,t)=>{const v=projMes(t,mi);return s+(v||0);},0);return`<td style="padding:6px 8px;text-align:right;font-weight:800;color:${mi===8?"#fca5a5":"white"}">${fBd(tot)}</td>`;}).join("")}
             <td style="padding:6px 8px;text-align:right;font-weight:900;color:#fbbf24">${fBd(totalAnual)}</td>
             <td style="padding:6px 8px;text-align:center;font-weight:800;color:${varPct>0.02?"#fca5a5":"#86efac"}">${pct(varPct)}</td>
           </tr>
@@ -841,8 +832,8 @@ function buildChartsIfNeeded() {
   const projCanvas = document.getElementById("bar-projecao");
   if (projCanvas && !_charts["bar-projecao"]) {
     const MES = PROJ_P.MESES;
-    const linha = MES.map((_, mi) => ativas.reduce((s, t) => { const v = projMesTool(t, mi); return s + (v || 0); }, 0) + PROJ_P.PROV_NOVAS);
-    const caixa = MES.map(() => PROJ_P.PROV_NOVAS);
+    const linha = MES.map((_, mi) => ativas.reduce((s, t) => { const v = projMesTool(t, mi); return s + (v || 0); }, 0));
+    const caixa = MES.map(() => 0);
     const renovByMonth = MES.map(() => []);
     ativas.forEach(t => {
       let idxRen = -1;
