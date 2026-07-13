@@ -526,7 +526,7 @@ function buildProjecao(ativas){
       <span style="font-size:11px;color:var(--muted);font-weight:600">barras = desembolso de caixa · linha = custo projetado mensal</span>
     </div>
     <div class="chart-wrap" style="height:320px"><canvas id="bar-projecao"></canvas></div>
-    <div style="font-size:11px;color:var(--muted);margin-top:8px">Ferramentas anuais com data de renovação registrada entram como desembolso único (12× o valor mensal projetado) no mês da renovação — é onde aparecem os picos, destacados a laranja. Anuais sem data são distribuídas uniformemente; passe o rato sobre um pico para ver que renovações o compõem.</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">Ferramentas anuais com data de renovação registrada entram como desembolso único (12× o valor mensal projetado) no mês da renovação — é onde aparecem os picos, destacados a laranja. Anuais sem data são distribuídas uniformemente; passe o mouse sobre um pico para ver quais renovações o compõem.</div>
   </div>
 
   <!-- PREMISSAS / CÂMBIO MANUAL -->
@@ -701,7 +701,7 @@ function buildGestao(ativas,total){
     </div>
   </div>
   <div class="card cp" style="margin-top:12px">
-    <div class="card-header" style="margin:-18px -20px 14px"><span class="card-title">Bowtie — ferramentas por etapa do funil</span><span style="font-size:11px;color:var(--muted);font-weight:600">modelo Winning by Design · passa o rato para ver a justificativa</span></div>
+    <div class="card-header" style="margin:-18px -20px 14px"><span class="card-title">Bowtie — ferramentas por etapa do funil</span><span style="font-size:11px;color:var(--muted);font-weight:600">modelo Winning by Design · passe o mouse para ver a justificativa</span></div>
     <div style="display:flex;align-items:flex-start;gap:6px;overflow-x:auto;padding-bottom:6px">
       ${STAGES.map(st=>{const tools=byStage(st.k);const sc=SIDECOL[st.side];return`<div style="flex:1;min-width:118px;display:flex;flex-direction:column;align-items:center">
         <div style="width:100%;min-height:${st.h}px;background:${sc.bg};border-radius:8px;display:flex;flex-direction:column;align-items:center;padding:8px 6px;gap:4px">
@@ -1205,7 +1205,7 @@ function buildCustos(ativas,total){
   <!-- SOBREPOSIÇÕES -->
   <div class="card cp">
     <div class="card-header" style="margin:-18px -20px 14px"><span class="card-title">Sobreposições identificadas</span><span style="font-size:11px;color:var(--orange);font-weight:800">até R$ 1.481/mês</span></div>
-    ${[{t:"Dripify × Snov.io",m:"Cadências de prospecção multicanal duplicadas",e:1112.50,p:"MÉDIA"},{t:"Lusha × Snov.io",m:"Enriquecimento e validação de contatos B2B duplicado",e:368.75,p:"MÉDIA"},{t:"Claude RevOps + Claude MKT",m:"Dois contratos — consolidar num plano Team único",e:null,p:"MÉDIA"}].map(s=>`
+    ${[{t:"Dripify × Snov.io",m:"Cadências de prospecção multicanal duplicadas",e:1112.50,p:"MÉDIA"},{t:"Lusha × Snov.io",m:"Enriquecimento e validação de contatos B2B duplicado",e:368.75,p:"MÉDIA"},{t:"Claude RevOps + Claude MKT",m:"Dois contratos — consolidar em um plano Team único",e:null,p:"MÉDIA"}].map(s=>`
       <div class="orow">
         <div><div style="font-size:13px;font-weight:700">${s.t}</div><div style="font-size:12px;color:var(--muted);margin-top:3px">${s.m}</div></div>
         <div style="text-align:right;flex-shrink:0;margin-left:16px">${s.e?`<div style="font-size:14px;font-weight:800;color:var(--orange)">até ${fBRLg(s.e)}${gr.s}</div>`:`<div style="font-size:11px;color:var(--muted);font-weight:600">custo desconhecido</div>`}<span class="badge" style="color:${{"MÉDIA":"#d97706"}[s.p]};background:${{"MÉDIA":"#fffbeb"}[s.p]};margin-top:3px">${s.p}</span></div>
@@ -1300,7 +1300,7 @@ function buildModal(){
             <div class="ff"><label>Moeda</label><select id="f-moeda" onchange="window._calcBRL()"><option value="BRL"${(f.moeda||"BRL")==="BRL"?" selected":""}>BRL — Real</option><option value="USD"${f.moeda==="USD"?" selected":""}>USD — Dólar</option><option value="EUR"${f.moeda==="EUR"?" selected":""}>EUR — Euro</option></select></div>
             <div class="ff">
               <label style="display:flex;align-items:center;justify-content:space-between">
-                <span>BRL/Mês (actual)</span>
+                <span>BRL/Mês (atual)</span>
                 ${S.cambio&&!S.cambio.error?`<button type="button" onclick="window._calcBRL(true)" style="font-size:10px;background:#E8461E;color:white;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-family:inherit">↻ Calcular</button>`:''}
               </label>
               <input id="f-custo_brl_mes" type="number" step="0.01" placeholder="ex: 1540.00" value="${f.custo_brl_mes||""}">
