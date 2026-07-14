@@ -300,10 +300,12 @@ window._calcBRL = function(forceToday){
   const campoBRL = document.getElementById("f-custo_brl_mes");
   const preview = document.getElementById("modal-cambio-preview");
   if(moeda==="BRL"){ if(preview) preview.textContent=""; return; }
-  // Get rate
+  // Get rate — se o campo estiver vazio, usa o câmbio de contratação padrão (evita cálculo silenciosamente incorreto)
+  const FALLBACK_FX = {USD:6.25, EUR:7.00};
   let taxa = parseFloat(campoTaxa?.value)||0;
   const taxaHoje = moeda==="USD" ? S.cambio?.usd?.[0]?.value : S.cambio?.eur?.[0]?.value;
   if(forceToday && taxaHoje){ taxa = taxaHoje; if(campoTaxa) campoTaxa.value = taxaHoje.toFixed(4); }
+  if(!taxa){ taxa = FALLBACK_FX[moeda]||0; if(campoTaxa && !campoTaxa.value) campoTaxa.value = taxa.toFixed(4); }
   if(!taxa || !original){ if(preview) preview.textContent=""; return; }
   const brl = (original*taxa).toFixed(2);
   if(campoBRL && (forceToday || !campoBRL.value)) campoBRL.value = brl;
