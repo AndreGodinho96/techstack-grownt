@@ -427,6 +427,7 @@ const getAtivas=()=>S.tools.filter(t=>t.status==="ATIVA");
 const getRO=()=>S.risks.filter(r=>r.status_acao!=="Concluído");
 const getDepts=()=>[...new Set(S.tools.map(t=>t.departamento).filter(Boolean))].sort();
 const getCentros=()=>[...new Set(S.tools.map(t=>t.centro_de_custo).filter(Boolean))].sort();
+const getCategorias=()=>[...new Set(S.tools.map(t=>t.categoria_funcional).filter(Boolean))].sort();
 const getStatuses=()=>[...new Set(S.tools.map(t=>t.status))];
 function pf(f,v){if(!f||!f.vals||!f.vals.length)return true;return f.vals.includes(v);}
 function gfSummary(f,labelFn){if(!f.vals||!f.vals.length)return"todos";const names=f.vals.map(v=>labelFn?labelFn(v):v);return names.length<=2?names.join(", "):names.length+" selec.";}
@@ -999,6 +1000,7 @@ function buildStack(){
     ${gfDrop("s","dept","Depto",getDepts())}
     ${gfDrop("s","cc","Centro Custo",getCentros())}
     ${(S.sFiltros.status.vals.length||S.sFiltros.dept.vals.length||S.sFiltros.cc.vals.length||S.search)?`<button id="sf-reset" style="border:1px solid #E5E2D8;background:#F7F5EF;border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--muted)">Limpar</button>`:""}
+    <button id="btn-nova-ferramenta" style="margin-left:auto;border:none;background:var(--orange);color:white;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">+ Nova ferramenta</button>
     <span class="count-label">${f.length} / ${S.tools.length}</span>
   </div>
   <div class="card fade">
@@ -1335,12 +1337,16 @@ function buildHistorico(){
   </div>`;}
 
 function buildModal(){
-  const t=S.editTool;const f=S.editForm;
+  const t=S.editTool;const f=S.editForm;const isNew=!t.id;
   return`<div class="modal-bg" id="modal-bg">
     <div class="modal">
-      <div class="mhdr"><span class="mtitle"><span class="mtitle-dot"></span>${t.ferramenta}</span><button class="mclose" id="modal-close">×</button></div>
+      <div class="mhdr"><span class="mtitle"><span class="mtitle-dot"></span>${isNew?"Nova ferramenta":t.ferramenta}</span><button class="mclose" id="modal-close">×</button></div>
       <div class="mbody">
         <div class="fg">
+          <div class="ff ff-full"><label>Nome da ferramenta ${isNew?"*":""}</label><input id="f-nome" value="${(f.ferramenta||"").replace(/"/g,"&quot;")}" placeholder="ex: Notion"></div>
+          <div class="ff"><label>Departamento ${isNew?"*":""}</label><input id="f-dept" list="dl-depts" value="${(f.departamento||"").replace(/"/g,"&quot;")}" placeholder="ex: MKT"><datalist id="dl-depts">${getDepts().map(d=>`<option value="${d}">`).join("")}</datalist></div>
+          <div class="ff"><label>Categoria funcional</label><input id="f-cat" list="dl-cats" value="${(f.categoria_funcional||"").replace(/"/g,"&quot;")}" placeholder="ex: CRM / Revenue Platform"><datalist id="dl-cats">${getCategorias().map(c=>`<option value="${c}">`).join("")}</datalist></div>
+          <div class="ff ff-full"><label>Para que serve</label><textarea id="f-para-que-serve" rows="2" style="width:100%;font-family:inherit;font-size:13px;padding:8px;border:1px solid #E5E2D8;border-radius:6px;resize:vertical;box-sizing:border-box">${f.para_que_serve||""}</textarea></div>
           <div class="ff ff-full"><label>Status</label><select id="f-status">${["ATIVA","EM_AVALIAÇÃO","FORA_DA_GESTÃO","CANCELADA"].map(s=>`<option value="${s}"${(f.status||"ATIVA")===s?" selected":""}>${(SM[s]||{l:s}).l}</option>`).join("")}</select></div>
           <div class="fg" style="background:#F4F1EA;padding:12px;border-radius:8px;margin-bottom:8px;grid-column:1/-1">
             <div style="display:flex;align-items:center;justify-content:space-between;grid-column:1/-1;margin-bottom:10px">
@@ -1432,9 +1438,15 @@ function attachEvents(){
   document.getElementById("gf-critica")?.addEventListener("change",e=>{S.gFiltros.critica=e.target.value;render();});
   document.getElementById("gf-reset")?.addEventListener("click",()=>{S.gFiltros={status:{mode:"in",vals:[]},dept:{mode:"in",vals:[]},cc:{mode:"in",vals:[]},cat:{mode:"in",vals:[]},critica:"all"};S.openFilter=null;render();});
   if(!window._gfOutside){window._gfOutside=true;document.addEventListener("click",e=>{if(S.openFilter&&e.target.closest&&!e.target.closest(".gf-wrap")){S.openFilter=null;render();}});}
+  document.getElementById("btn-nova-ferramenta")?.addEventListener("click",()=>{
+    S.editTool={id:null};
+    S.editFormOriginal={};
+    S.editForm={ferramenta:"",departamento:"",categoria_funcional:"",para_que_serve:"",usuarios_qtd:"",etapa_funil:"",justificativa_funil:"",responsavel:"",aprovado_por:"",centro_de_custo:"",score_utilizacao:"",nps_interno:"",substituto:"",data_contratacao:"",ultima_revisao:"",prox_renovacao:"",acao_pendente:"",custo_original:"",moeda:"BRL",custo_brl_mes:"",cambio_contratacao:"",cambio_notas:"",status:"ATIVA",justificativa_contratacao:"",responsavel_contratacao:"",data_cancelamento:""};
+    render();
+  });
   document.querySelectorAll(".edit-btn").forEach(btn=>btn.addEventListener("click",()=>{
     const tool=S.tools.find(t=>t.id==btn.dataset.id);if(!tool)return;
-    S.editTool=tool;S.editFormOriginal={...tool};S.editForm={usuarios_qtd:tool.usuarios_qtd??"",etapa_funil:tool.etapa_funil||"",justificativa_funil:tool.justificativa_funil||"",responsavel:tool.responsavel||"",aprovado_por:tool.aprovado_por||"",centro_de_custo:tool.centro_de_custo||"",score_utilizacao:tool.score_utilizacao||"",nps_interno:tool.nps_interno||"",substituto:tool.substituto||"",data_contratacao:tool.data_contratacao||"",ultima_revisao:tool.ultima_revisao||"",prox_renovacao:tool.prox_renovacao||"",acao_pendente:tool.acao_pendente||"",custo_original:tool.custo_original||"",moeda:tool.moeda||"BRL",custo_brl_mes:tool.custo_brl_mes||"",cambio_contratacao:tool.cambio_contratacao||"",cambio_notas:tool.cambio_notas||"",status:tool.status||"ATIVA",justificativa_contratacao:tool.justificativa_contratacao||"",responsavel_contratacao:tool.responsavel_contratacao||"",data_cancelamento:tool.data_cancelamento||""};
+    S.editTool=tool;S.editFormOriginal={...tool};S.editForm={ferramenta:tool.ferramenta||"",departamento:tool.departamento||"",categoria_funcional:tool.categoria_funcional||"",para_que_serve:tool.para_que_serve||"",usuarios_qtd:tool.usuarios_qtd??"",etapa_funil:tool.etapa_funil||"",justificativa_funil:tool.justificativa_funil||"",responsavel:tool.responsavel||"",aprovado_por:tool.aprovado_por||"",centro_de_custo:tool.centro_de_custo||"",score_utilizacao:tool.score_utilizacao||"",nps_interno:tool.nps_interno||"",substituto:tool.substituto||"",data_contratacao:tool.data_contratacao||"",ultima_revisao:tool.ultima_revisao||"",prox_renovacao:tool.prox_renovacao||"",acao_pendente:tool.acao_pendente||"",custo_original:tool.custo_original||"",moeda:tool.moeda||"BRL",custo_brl_mes:tool.custo_brl_mes||"",cambio_contratacao:tool.cambio_contratacao||"",cambio_notas:tool.cambio_notas||"",status:tool.status||"ATIVA",justificativa_contratacao:tool.justificativa_contratacao||"",responsavel_contratacao:tool.responsavel_contratacao||"",data_cancelamento:tool.data_cancelamento||""};
     render();
   }));
   document.querySelectorAll(".cbtn").forEach(btn=>btn.addEventListener("click",async()=>{
@@ -1447,7 +1459,27 @@ function attachEvents(){
   document.getElementById("modal-cancel")?.addEventListener("click",closeModal);
   document.getElementById("modal-save")?.addEventListener("click",async()=>{
     const gv=id=>document.getElementById(id)?.value||null;const gn=id=>{const v=document.getElementById(id)?.value;return v?parseFloat(v):null;};
-    const current={responsavel:gv("f-responsavel"),aprovado_por:gv("f-aprovado_por"),centro_de_custo:gv("f-centro"),score_utilizacao:gv("f-score")?parseInt(gv("f-score")):null,nps_interno:gv("f-nps"),substituto:gv("f-substituto"),data_contratacao:gv("f-data_c"),ultima_revisao:gv("f-ultima_r"),prox_renovacao:gv("f-prox_renov"),acao_pendente:gv("f-acao"),custo_original:gn("f-custo_original"),usuarios_qtd:gv("f-usuarios_qtd")?parseInt(gv("f-usuarios_qtd")):null,moeda:gv("f-moeda")||"BRL",custo_brl_mes:gn("f-custo_brl_mes"),cambio_contratacao:gn("f-cambio"),cambio_notas:gv("f-cambio_notas"),status:gv("f-status")||"ATIVA",justificativa_contratacao:gv("f-justif_contr"),responsavel_contratacao:gv("f-resp_contr"),data_cancelamento:gv("f-data_cancel"),etapa_funil:(()=>{const cks=[...document.querySelectorAll(".f-etapa-cb:checked")].map(c=>c.value);return cks.length?cks.join(", "):null;})(),justificativa_funil:gv("f-justif_funil")};
+    const isNew=!S.editTool.id;
+    const current={ferramenta:gv("f-nome"),departamento:gv("f-dept"),categoria_funcional:gv("f-cat"),para_que_serve:gv("f-para-que-serve"),responsavel:gv("f-responsavel"),aprovado_por:gv("f-aprovado_por"),centro_de_custo:gv("f-centro"),score_utilizacao:gv("f-score")?parseInt(gv("f-score")):null,nps_interno:gv("f-nps"),substituto:gv("f-substituto"),data_contratacao:gv("f-data_c"),ultima_revisao:gv("f-ultima_r"),prox_renovacao:gv("f-prox_renov"),acao_pendente:gv("f-acao"),custo_original:gn("f-custo_original"),usuarios_qtd:gv("f-usuarios_qtd")?parseInt(gv("f-usuarios_qtd")):null,moeda:gv("f-moeda")||"BRL",custo_brl_mes:gn("f-custo_brl_mes"),cambio_contratacao:gn("f-cambio"),cambio_notas:gv("f-cambio_notas"),status:gv("f-status")||"ATIVA",justificativa_contratacao:gv("f-justif_contr"),responsavel_contratacao:gv("f-resp_contr"),data_cancelamento:gv("f-data_cancel"),etapa_funil:(()=>{const cks=[...document.querySelectorAll(".f-etapa-cb:checked")].map(c=>c.value);return cks.length?cks.join(", "):null;})(),justificativa_funil:gv("f-justif_funil")};
+
+    if(isNew){
+      if(!current.ferramenta||!current.ferramenta.trim()){toast("Preencha o nome da ferramenta",true);return;}
+      if(!current.departamento||!current.departamento.trim()){toast("Preencha o departamento",true);return;}
+      S.saving=true;render();
+      try{
+        const payload={...current};
+        Object.keys(payload).forEach(k=>{if(payload[k]===null||payload[k]==="")delete payload[k];});
+        const inserted=await sbFetch("tools",{method:"POST",body:JSON.stringify(payload)});
+        if(inserted&&inserted[0])S.tools=[...S.tools,inserted[0]];
+        toast("Ferramenta criada com sucesso");
+        S.editTool=null;
+      }catch(e){
+        console.error("criarFerramenta:",e);
+        toast("Erro ao criar ferramenta",true);
+      }finally{S.saving=false;render();}
+      return;
+    }
+
     // Envia apenas os campos realmente alterados face ao valor com que o formulário foi aberto —
     // evita que campos não tocados (possivelmente desatualizados no browser) sobrescrevam a base.
     const NUM_KEYS=new Set(["score_utilizacao","custo_original","usuarios_qtd","custo_brl_mes","cambio_contratacao"]);
